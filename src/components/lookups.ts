@@ -3,7 +3,7 @@ import type { Scope } from "@/lib/context";
 import { todayISO } from "@/lib/dates";
 import { listCompanies } from "@/modules/companies";
 import { listProjects } from "@/modules/projects";
-import type { TaskLookups } from "./task-row";
+import type { TaskLookups } from "./task-items";
 
 export async function loadLookups(scope: Scope) {
   const [projects, companies] = await Promise.all([listProjects(scope), listCompanies(scope)]);

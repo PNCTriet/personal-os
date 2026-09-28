@@ -25,7 +25,7 @@ export function StatusCheck({ id, status, title }: { id: string; status: Status;
       })}
     >
       <span>
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </span>
     </button>
   );
@@ -36,7 +36,7 @@ export function StatusSelect({ id, status, options }: { id: string; status: Stat
   const [optimistic, set] = useOptimistic(status);
   return (
     <select
-      className="chip status-chip"
+      className="select"
       aria-label="Status"
       value={optimistic}
       disabled={pending}

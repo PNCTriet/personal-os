@@ -10,13 +10,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (appMode() === "demo") redirect("/");
   const { error } = await searchParams;
   return (
-    <section className="tile tile-hero" style={{ minHeight: "70vh" }}>
-      <div className="container" style={{ maxWidth: 520, textAlign: "center" }}>
-        <h1 className="t-hero" style={{ margin: 0 }}>Sign in.</h1>
-        <p className="t-lead" style={{ margin: "16px 0 32px", color: "var(--text-secondary)" }}>This workspace has one owner. We’ll email you a link.</p>
-        {error && <p className="t-caption" role="alert">That link has expired or was already used. Request a new one.</p>}
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16 }}>
+      <div className="panel" style={{ width: "100%", maxWidth: 380, padding: 24 }}>
+        <h1 className="t-title">Sign in</h1>
+        <p className="muted" style={{ margin: "4px 0 16px" }}>This workspace has one owner. We’ll email you a sign-in link.</p>
+        {error && <p className="t-small tone-red" role="alert">That link has expired or was already used. Request a new one.</p>}
         <LoginForm />
       </div>
-    </section>
+    </div>
   );
 }

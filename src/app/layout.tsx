@@ -3,9 +3,9 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { appMode } from "@/lib/env";
 import { resolveScope } from "@/lib/session";
-import { GlobalNav } from "@/components/global-nav";
-import { Footer } from "@/components/footer";
 import { themeScript } from "@/components/theme-toggle";
+import { AppShell } from "@/components/shell/app-shell";
+import { loadShellData } from "@/components/shell/shell-data";
 
 // Fallback for non-Apple platforms (DESIGN.md: SF Pro → system-ui → Inter).
 const inter = Inter({ subsets: ["latin", "vietnamese"], variable: "--font-inter", display: "swap" });
@@ -17,12 +17,13 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [{ media: "(prefers-color-scheme: light)", color: "#000000" }, { media: "(prefers-color-scheme: dark)", color: "#000000" }],
+  themeColor: [{ media: "(prefers-color-scheme: light)", color: "#f5f5f7" }, { media: "(prefers-color-scheme: dark)", color: "#000000" }],
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const demo = appMode() === "demo";
-  const scope = demo ? null : await resolveScope("web");
+  const scope = await resolveScope("web");
+  const shell = scope ? await loadShellData(scope) : null;
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
@@ -30,9 +31,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <a href="#main" className="sr-only focus:not-sr-only">Skip to content</a>
-        <GlobalNav demo={demo} signedIn={demo || !!scope} />
-        <main id="main">{children}</main>
-        <Footer demo={demo} />
+        {shell ? (
+          <AppShell demo={demo} signedIn={!!scope} counts={shell.counts} index={shell.index} pickers={shell.pickers}>{children}</AppShell>
+        ) : (
+          <main id="main">{children}</main>
+        )}
       </body>
     </html>
   );
