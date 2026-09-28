@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inbox } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { relativeTime } from "@/lib/dates";
 import { getPreview, DOMAIN_PHASE } from "@/modules/preview";
 import { DataTable } from "@/components/ui/data-table";
@@ -12,11 +13,12 @@ export const dynamic = "force-dynamic";
 
 export default async function InboxPage() {
   const scope = await requireScope();
+  const { t, locale } = await getI18n();
   const pv = getPreview(scope);
-  const rows = pv.inbox.map((m) => ({ id: m.id, from: m.from, subject: m.subject, snippet: m.snippet, label: m.label, state: m.unread ? "Unread" : "Read", received: relativeTime(m.received_at), receivedSort: m.received_at }));
+  const rows = pv.inbox.map((m) => ({ id: m.id, from: m.from, subject: m.subject, snippet: m.snippet, label: m.label, state: m.unread ? "Unread" : "Read", received: relativeTime(m.received_at, locale), receivedSort: m.received_at }));
   return (
     <>
-      <PageHeader title="Inbox" subtitle={rows.length ? `${rows.filter((r) => r.state === "Unread").length} unread · Gmail, read-only preview` : "Gmail threads linked to people and projects"} phase={phaseLabel(scope.ctx.mode === "demo", DOMAIN_PHASE.inbox)} />
+      <PageHeader title={t("nav.inbox")} subtitle={rows.length ? t("sub.inboxN", { n: rows.filter((r) => r.state === "Unread").length }) : t("sub.inbox")} phase={phaseLabel(t, scope.ctx.mode === "demo", DOMAIN_PHASE.inbox)} />
       <div className="panel">
         <DataTable
           rows={rows}
@@ -32,7 +34,7 @@ export default async function InboxPage() {
             { key: "label", label: "Label", kind: "pill", tones: { Clients: "blue", Partners: "gray", Personal: "green", Receipts: "none", Newsletters: "none" }, width: 110 },
             { key: "received", label: "Received", kind: "muted", sortKey: "receivedSort", width: 110 },
           ]}
-          empty={previewEmpty(Inbox, "email threads", DOMAIN_PHASE.inbox, rows.length > 0)}
+          empty={previewEmpty(t, Inbox, t("noun.threads"), DOMAIN_PHASE.inbox, rows.length > 0)}
         />
       </div>
     </>

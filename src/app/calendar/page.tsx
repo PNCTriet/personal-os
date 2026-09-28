@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CalendarDays } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { addDays, todayISO } from "@/lib/dates";
 import { clock, dayKey } from "@/lib/format";
 import { listTasks, isOpen } from "@/modules/tasks";
@@ -14,15 +15,16 @@ const TONE = { Work: "blue", Focus: "orange", Personal: "green" } as const;
 
 export default async function CalendarPage() {
   const scope = await requireScope();
+  const { t, locale } = await getI18n();
   const tz = scope.ctx.timezone;
   const today = todayISO(tz);
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i));
   const [tasks] = await Promise.all([listTasks(scope)]);
   const events = getPreview(scope).events;
-  const fmt = (iso: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-US", { ...o, timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
+  const fmt = (iso: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-US", { ...o, timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
   return (
     <>
-      <PageHeader title="Calendar" subtitle="Next 7 days · events and tasks with due dates" phase={phaseLabel(scope.ctx.mode === "demo", DOMAIN_PHASE.calendar)} />
+      <PageHeader title={t("nav.calendar")} subtitle={t("sub.calendar")} phase={phaseLabel(t, scope.ctx.mode === "demo", DOMAIN_PHASE.calendar)} />
       <div className="panel" style={{ overflow: "hidden" }}>
         <div className="grid grid-cols-1 md:grid-cols-7">
           {days.map((d, i) => {
@@ -53,7 +55,7 @@ export default async function CalendarPage() {
             );
           })}
         </div>
-        {events.length === 0 && <EmptyState icon={CalendarDays} title="No calendar connected" body="Google Calendar sync and task → time block arrive in Phase 2." phase="Connected in Phase 2" />}
+        {events.length === 0 && <EmptyState icon={CalendarDays} title={t("empty.noCalendar")} body={t("empty.noCalendarBody")} phase={t("common.connectedIn", { p: 2 })} />}
       </div>
     </>
   );

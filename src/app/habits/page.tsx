@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Repeat } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { addDays, todayISO } from "@/lib/dates";
 import { getPreview, DOMAIN_PHASE } from "@/modules/preview";
 import { PageHeader } from "@/components/ui/page";
@@ -11,15 +12,16 @@ export const dynamic = "force-dynamic";
 
 export default async function HabitsPage() {
   const scope = await requireScope();
+  const { t } = await getI18n();
   const habits = getPreview(scope).habits;
   const today = todayISO(scope.ctx.timezone);
   const days = Array.from({ length: 7 }, (_, i) => addDays(today, i - 6));
   const wd = (iso: string) => new Intl.DateTimeFormat("en-US", { weekday: "narrow", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
   return (
     <>
-      <PageHeader title="Habits" subtitle="Last 7 days · reminders and streaks need scheduled jobs" phase={phaseLabel(scope.ctx.mode === "demo", DOMAIN_PHASE.habits)} />
+      <PageHeader title={t("nav.habits")} subtitle={t("sub.habits")} phase={phaseLabel(t, scope.ctx.mode === "demo", DOMAIN_PHASE.habits)} />
       <div className="panel">
-        {habits.length === 0 ? previewEmpty(Repeat, "habits", DOMAIN_PHASE.habits, false) : (
+        {habits.length === 0 ? previewEmpty(t, Repeat, t("noun.habits"), DOMAIN_PHASE.habits, false) : (
           <div className="table-wrap">
             <table className="table">
               <thead>

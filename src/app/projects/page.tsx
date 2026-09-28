@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { FolderKanban } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { listProjectsWithStats, PROJECT_STATUS_LABEL } from "@/modules/projects";
 import { listCompanies } from "@/modules/companies";
 import { DataTable, type Row } from "@/components/ui/data-table";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
   const scope = await requireScope();
-  const [projects, companies] = await Promise.all([listProjectsWithStats(scope), listCompanies(scope)]);
+  const [projects, companies, { t }] = await Promise.all([listProjectsWithStats(scope), listCompanies(scope), getI18n()]);
   const company = new Map(companies.map((c) => [c.id, c.name]));
   const rank = { active: 0, planned: 1, on_hold: 2, completed: 3, cancelled: 4 } as const;
   const rows: Row[] = projects.filter((p) => !p.archived_at).map((p) => ({
@@ -22,8 +23,8 @@ export default async function ProjectsPage() {
   }));
   return (
     <>
-      <PageHeader title="Projects" subtitle={`${rows.length} projects · ${projects.filter((p) => p.status === "active").length} active`}
-        actions={<a href="#new" className="btn btn-primary">New project</a>} />
+      <PageHeader title={t("nav.projects")} subtitle={t("proj.subtitle", { n: rows.length, active: projects.filter((p) => p.status === "active").length })}
+        actions={<a href="#new" className="btn btn-primary">{t("proj.new")}</a>} />
       <div className="panel" style={{ marginBottom: 12 }}>
         <DataTable
           rows={rows}
@@ -41,10 +42,10 @@ export default async function ProjectsPage() {
             { key: "overdue", label: "Overdue", kind: "number", align: "right", width: 80 },
             { key: "target", label: "Target", kind: "date", width: 90 },
           ]}
-          empty={<EmptyState icon={FolderKanban} title="No projects" body="Create your first project below." />}
+          empty={<EmptyState icon={FolderKanban} title={t("proj.none")} body={t("proj.noneBody")} />}
         />
       </div>
-      <Panel title="New project" style={{ maxWidth: 760 }}>
+      <Panel title={t("proj.new")} style={{ maxWidth: 760 }}>
         <div id="new" style={{ scrollMarginTop: 64 }}><NewProject /></div>
       </Panel>
     </>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { KeyRound } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { relativeTime } from "@/lib/dates";
 import { getPreview, DOMAIN_PHASE } from "@/modules/preview";
 import { DataTable } from "@/components/ui/data-table";
@@ -12,14 +13,15 @@ export const dynamic = "force-dynamic";
 
 export default async function ApiKeysPage() {
   const scope = await requireScope();
+  const { t, locale } = await getI18n();
   const rows = getPreview(scope).apiKeys.map((k) => ({
     id: k.id, name: k.name, prefix: `${k.prefix}…`, kind: k.kind, scopes: k.scopes,
-    lastUsed: k.last_used_at ? relativeTime(k.last_used_at) : "Never", lastUsedSort: k.last_used_at ?? "", created_on: k.created_on,
+    lastUsed: k.last_used_at ? relativeTime(k.last_used_at, locale) : t("dash.never"), lastUsedSort: k.last_used_at ?? "", created_on: k.created_on,
   }));
   return (
     <>
-      <PageHeader title="API keys" subtitle="Keys are shown once, stored hashed, scoped and revocable. Every use is audited" phase={phaseLabel(scope.ctx.mode === "demo", DOMAIN_PHASE.apiKeys)}
-        actions={<button className="btn btn-primary" disabled title="API keys ship in Phase 1 (HOWL-POS-P1-T13)">Create key</button>} />
+      <PageHeader title={t("nav.apiKeys")} subtitle={t("sub.apiKeys")} phase={phaseLabel(t, scope.ctx.mode === "demo", DOMAIN_PHASE.apiKeys)}
+        actions={<button className="btn btn-primary" disabled title="API keys ship in Phase 1 (HOWL-POS-P1-T13)">{t("btn.createKey")}</button>} />
       <div className="panel">
         <DataTable
           rows={rows}
@@ -33,7 +35,7 @@ export default async function ApiKeysPage() {
             { key: "lastUsed", label: "Last used", kind: "muted", sortKey: "lastUsedSort", width: 110 },
             { key: "created_on", label: "Created", kind: "date", width: 90 },
           ]}
-          empty={previewEmpty(KeyRound, "API keys", DOMAIN_PHASE.apiKeys, rows.length > 0)}
+          empty={previewEmpty(t, KeyRound, t("noun.apiKeys"), DOMAIN_PHASE.apiKeys, rows.length > 0)}
         />
       </div>
     </>

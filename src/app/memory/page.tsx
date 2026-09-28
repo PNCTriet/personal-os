@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Brain } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { getPreview, DOMAIN_PHASE } from "@/modules/preview";
 import { DataTable } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page";
@@ -13,10 +14,11 @@ const SOURCE = { manual: "Manual", ai_command: "AI command", email: "Email", not
 
 export default async function MemoryPage() {
   const scope = await requireScope();
+  const { t } = await getI18n();
   const rows = getPreview(scope).memories.map((m) => ({ ...m }));
   return (
     <>
-      <PageHeader title="Memory" subtitle="What the OS knows about you and your world. AI reads it only through scoped tools" phase={phaseLabel(scope.ctx.mode === "demo", DOMAIN_PHASE.memory)} />
+      <PageHeader title={t("nav.memory")} subtitle={t("sub.memory")} phase={phaseLabel(t, scope.ctx.mode === "demo", DOMAIN_PHASE.memory)} />
       <div className="panel">
         <DataTable
           rows={rows}
@@ -32,7 +34,7 @@ export default async function MemoryPage() {
             { key: "confidence", label: "Confidence", kind: "percent", align: "right", width: 100 },
             { key: "valid_from", label: "Since", kind: "date", width: 90 },
           ]}
-          empty={previewEmpty(Brain, "memories", DOMAIN_PHASE.memory, rows.length > 0)}
+          empty={previewEmpty(t, Brain, t("noun.memories"), DOMAIN_PHASE.memory, rows.length > 0)}
         />
       </div>
     </>

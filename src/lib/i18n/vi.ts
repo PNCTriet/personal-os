@@ -1,0 +1,107 @@
+import type { MessageKey } from "./en";
+
+/** Tiếng Việt. Must cover every key in en.ts (enforced by the type). */
+export const vi: Record<MessageKey, string> = {
+  "nav.dashboard": "Tổng quan", "nav.today": "Hôm nay", "nav.calendar": "Lịch", "nav.projects": "Dự án", "nav.tasks": "Công việc",
+  "nav.transactions": "Giao dịch", "nav.accounts": "Tài khoản", "nav.budgets": "Ngân sách", "nav.debts": "Công nợ",
+  "nav.people": "Mọi người", "nav.companies": "Công ty", "nav.inbox": "Hộp thư", "nav.campaigns": "Chiến dịch",
+  "nav.notes": "Ghi chú", "nav.documents": "Tài liệu", "nav.goals": "Mục tiêu", "nav.habits": "Thói quen", "nav.memory": "Bộ nhớ",
+  "nav.integrations": "Tích hợp", "nav.apiKeys": "Khóa API", "nav.auditLog": "Nhật ký",
+  "group.overview": "Tổng quan", "group.planning": "Kế hoạch", "group.work": "Công việc", "group.finance": "Tài chính",
+  "group.relationships": "Quan hệ", "group.communication": "Liên lạc", "group.knowledge": "Kiến thức",
+  "group.growth": "Phát triển", "group.memory": "Bộ nhớ", "group.settings": "Cài đặt",
+
+  "shell.search": "Tìm kiếm", "shell.searchLong": "Tìm công việc, dự án, người…", "shell.newTask": "Việc mới",
+  "shell.signOut": "Đăng xuất", "shell.demo": "Demo", "shell.demoHint": "Chế độ demo: dữ liệu mẫu trong bộ nhớ máy chủ, không cần đăng nhập. Tự đặt lại khi khởi động lại.",
+  "shell.openNav": "Mở menu", "shell.closeNav": "Đóng menu", "shell.toggleSidebar": "Ẩn/hiện thanh bên", "shell.toggleTheme": "Bật/tắt chế độ tối",
+  "shell.language": "Ngôn ngữ", "shell.switchTo": "English", "shell.skip": "Chuyển đến nội dung", "shell.close": "Đóng",
+  "cmd.placeholder": "Tìm hoặc chuyển đến…", "cmd.empty": "Không có kết quả.", "cmd.actions": "Thao tác", "cmd.goto": "Đi đến",
+  "cmd.newProject": "Dự án mới", "cmd.switchLang": "Chuyển sang tiếng Anh",
+
+  "common.seeAll": "Xem tất cả", "common.showMore": "Xem thêm", "common.showLess": "Thu gọn", "common.inbox": "Hộp việc",
+  "common.noMatches": "Không có kết quả", "common.tryFilter": "Thử bộ lọc khác.", "common.filter": "Lọc…", "common.all": "Tất cả",
+  "common.noActivity": "Chưa có hoạt động.", "common.backHome": "Về Tổng quan", "common.notFound": "Không tìm thấy trang này",
+  "common.preview": "Xem trước · Giai đoạn {p}", "common.phase": "Giai đoạn {p}", "common.connectedIn": "Kết nối ở Giai đoạn {p}",
+  "common.noneYet": "Chưa có {noun}", "common.readOnly": "Khu vực này chỉ đọc cho đến khi phần backend hoàn thành.",
+  "common.rows": "{n} mục", "common.approve": "Duyệt", "common.reject": "Từ chối",
+
+  "greet.morning": "Chào buổi sáng", "greet.afternoon": "Chào buổi chiều", "greet.evening": "Chào buổi tối",
+  "dash.summaryClear": "Hôm nay không có việc đến hạn. Tận hưởng sự thư thả.",
+  "dash.summary": "{due} việc đến hạn hôm nay, {overdue} quá hạn.",
+  "dash.summarySpend": "Đã chi {pct}% ngân sách tháng này.",
+  "dash.dueToday": "Hạn hôm nay", "dash.overdue": "Quá hạn", "dash.open": "Việc đang mở", "dash.spend": "Chi tiêu", "dash.cash": "Tiền mặt",
+  "dash.followUps": "Cần theo dõi", "dash.ofBudget": "trên {b}",
+  "dash.agenda": "Lịch hôm nay", "dash.nothingScheduled": "Không có lịch", "dash.nothingScheduledBody": "Hôm nay không có sự kiện hay việc đến hạn.",
+  "dash.calendarLater": "Sự kiện lịch sẽ kết nối ở Giai đoạn 2.",
+  "dash.projects": "Dự án", "dash.approvals": "Duyệt AI", "dash.noApprovals": "Không có yêu cầu chờ duyệt",
+  "dash.approvalsSoon": "Tính năng duyệt ra mắt cùng MCP (Giai đoạn 1.5)",
+  "dash.transactions": "Giao dịch gần đây", "dash.noTransactions": "Chưa có giao dịch", "dash.activity": "Hoạt động",
+  "dash.reconnect": "Cần liên lạc lại", "dash.noPeople": "Chưa có ai", "dash.caughtUp": "Đã liên lạc đủ", "dash.daysLate": "trễ {n} ngày", "dash.never": "Chưa từng",
+  "dash.moreSections": "Dự án, tài chính, hoạt động",
+  "dash.done": "{done}/{total} xong", "dash.overdueN": "{n} quá hạn",
+
+  "task.status.backlog": "Tồn đọng", "task.status.todo": "Cần làm", "task.status.in_progress": "Đang làm", "task.status.blocked": "Bị chặn",
+  "task.status.done": "Xong", "task.status.cancelled": "Đã hủy",
+  "task.priority.urgent": "Khẩn cấp", "task.priority.high": "Cao", "task.priority.normal": "Bình thường", "task.priority.low": "Thấp",
+  "task.kind.task": "Công việc", "task.kind.follow_up": "Theo dõi", "task.kind.milestone": "Cột mốc",
+  "task.view.open": "Đang mở", "task.view.due": "Hạn ≤ 7 ngày", "task.view.follow_up": "Theo dõi", "task.view.inbox": "Hộp việc", "task.view.done": "Xong", "task.view.all": "Tất cả",
+  "task.table": "Bảng", "task.board": "Kanban", "task.filter": "Lọc công việc…", "task.priorityAll": "Ưu tiên: Tất cả", "task.projectAll": "Dự án: Tất cả",
+  "task.count": "{n} việc", "task.noMatch": "Không có việc phù hợp", "task.noMatchBody": "Thử chế độ xem khác hoặc xóa bộ lọc.",
+  "task.col.task": "Công việc", "task.col.code": "Mã", "task.col.project": "Dự án", "task.col.status": "Trạng thái", "task.col.priority": "Ưu tiên", "task.col.due": "Hạn",
+  "task.dropHere": "Thả việc vào đây", "task.updateFailed": "Không thể cập nhật công việc",
+  "task.markDone": "Đánh dấu “{t}” là xong", "task.markUndone": "Đánh dấu “{t}” là chưa xong",
+  "task.subtitle": "{open} đang mở · {overdue} quá hạn",
+  "qa.placeholder": "Thêm công việc…", "qa.add": "Thêm", "qa.adding": "Đang thêm…", "qa.added": "Đã thêm", "qa.company": "Công ty…", "qa.due": "Hạn chót",
+
+  "today.subtitle": "{date} · {due} đến hạn, {overdue} quá hạn",
+  "today.overdue": "Quá hạn", "today.due": "Đến hạn hôm nay", "today.progress": "Đang làm", "today.upcoming": "7 ngày tới",
+  "today.emptyOverdue": "Không có việc quá hạn.", "today.emptyDue": "Không còn việc nào đến hạn hôm nay.", "today.emptyProgress": "Không có việc đang làm.",
+  "today.emptyUpcoming": "Một tuần nhẹ nhàng.", "today.schedule": "Lịch trình", "today.noEvents": "Không có sự kiện", "today.calendarLater": "Lịch kết nối ở Giai đoạn 2",
+
+  "due.overdueDays": "Trễ {n} ngày", "due.yesterday": "Hôm qua", "due.today": "Hôm nay", "due.tomorrow": "Ngày mai",
+  "rel.now": "Vừa xong", "rel.min": "{n} phút trước", "rel.hour": "{n} giờ trước", "rel.days": "{n} ngày trước",
+
+  "proj.subtitle": "{n} dự án · {active} đang chạy", "proj.new": "Dự án mới", "proj.none": "Chưa có dự án", "proj.noneBody": "Tạo dự án đầu tiên ở bên dưới.",
+  "proj.overview": "Tổng quan", "proj.progress": "Tiến độ", "proj.start": "Bắt đầu", "proj.target": "Mục tiêu", "proj.noActivity": "Dự án này chưa có hoạt động.",
+  "proj.create": "Tạo dự án", "proj.creating": "Đang tạo…", "proj.created": "Đã tạo dự án", "proj.name": "Tên dự án",
+  "proj.description": "Thế nào là hoàn thành? (không bắt buộc)", "proj.codeHint": "Mã theo ADR-006 (CÔNGTY-DỰÁN-NN) và không bao giờ đổi.",
+
+  "sub.inbox": "Email Gmail gắn với người và dự án", "sub.inboxN": "{n} chưa đọc · chỉ xem",
+  "sub.people": "Liên hệ, khách hàng, đối tác, bạn bè và gia đình", "sub.peopleN": "{n} người · {late} cần liên lạc lại",
+  "sub.habits": "7 ngày qua", "sub.goals": "Mục tiêu tài chính và cá nhân",
+  "sub.apiKeys": "Chỉ hiển thị một lần, lưu dạng băm, có phạm vi và thu hồi được", "sub.integrations": "Bộ chuyển đổi thay thế được, không phải nguồn dữ liệu gốc",
+  "sub.audit": "Mọi thay đổi: ai, cái gì, khi nào và qua kênh nào", "sub.companies": "{n} công ty",
+  "sub.calendar": "7 ngày tới", "sub.documents": "Notion, Google Drive, GitHub và liên kết", "sub.budgets": "Tháng này",
+  "sub.debts": "Tiền người khác nợ bạn và bạn nợ", "sub.debtsN": "Được nợ {r} · Bạn nợ {p}",
+  "sub.transactions": "Tất cả số tiền tính bằng VND", "sub.accounts": "Ngân hàng, tiền mặt, ví điện tử và thẻ tín dụng", "sub.accountsN": "Ròng {total} · {n} tài khoản",
+  "sub.memory": "Những gì OS biết. AI chỉ đọc qua công cụ có phạm vi", "sub.notes": "Ghi chú Markdown, tìm kiếm toàn văn",
+  "sub.campaigns": "Chuỗi email chào hàng qua Resend",
+  "title.debts": "Công nợ",
+  "btn.addPerson": "Thêm người", "btn.createKey": "Tạo khóa", "btn.connect": "Kết nối", "btn.addTransaction": "Thêm giao dịch",
+  "btn.newNote": "Ghi chú mới", "btn.newCampaign": "Chiến dịch mới",
+  "empty.audit": "Chưa có bản ghi", "empty.auditBody": "Thay đổi trên dự án và công việc sẽ hiện ở đây.",
+  "empty.companies": "Chưa có công ty", "empty.noCalendar": "Chưa kết nối lịch", "empty.noCalendarBody": "Đồng bộ Google Calendar ra mắt ở Giai đoạn 2.",
+  "noun.threads": "email", "noun.people": "liên hệ", "noun.habits": "thói quen", "noun.goals": "mục tiêu", "noun.apiKeys": "khóa API",
+  "noun.documents": "tài liệu", "noun.budgets": "ngân sách", "noun.debts": "khoản nợ", "noun.transactions": "giao dịch", "noun.accounts": "tài khoản",
+  "noun.memories": "bộ nhớ", "noun.notes": "ghi chú", "noun.campaigns": "chiến dịch",
+};
+
+/**
+ * Table vocabulary (column headers, facet and status labels) used by the generic DataTable, which receives
+ * English labels from pages. Looked up loosely; anything missing stays in English.
+ */
+export const viTerms: Record<string, string> = {
+  About: "Giới thiệu", Account: "Tài khoản", Action: "Thao tác", Actor: "Người thực hiện", Amount: "Số tiền", Area: "Lĩnh vực",
+  Balance: "Số dư", Budget: "Ngân sách", Campaign: "Chiến dịch", Category: "Danh mục", Code: "Mã", Company: "Công ty",
+  Confidence: "Độ tin cậy", Counterparty: "Đối tác", Created: "Tạo lúc", Currency: "Tiền tệ", "Current / target": "Hiện tại / mục tiêu",
+  Date: "Ngày", Description: "Mô tả", Direction: "Chiều", Domain: "Miền", Due: "Hạn", Enrolled: "Đã ghi danh", Entity: "Đối tượng",
+  Excerpt: "Trích đoạn", From: "Từ", Goal: "Mục tiêu", Industry: "Ngành", Institution: "Tổ chức", Key: "Khóa", Kind: "Loại",
+  Label: "Nhãn", "Last contact": "Liên lạc gần nhất", "Last used": "Dùng gần nhất", "Linked to": "Liên kết với", Memory: "Bộ nhớ",
+  Name: "Tên", Net: "Ròng", Note: "Ghi chú", "Open follow-ups": "Việc theo dõi", "Open rate": "Tỷ lệ mở", Open: "Mở", Outstanding: "Còn lại",
+  Overdue: "Quá hạn", Paid: "Đã trả", People: "Mọi người", Progress: "Tiến độ", Project: "Dự án", Projects: "Dự án", Received: "Đã nhận",
+  Relationship: "Quan hệ", Remaining: "Còn lại", "Reply rate": "Tỷ lệ trả lời", Role: "Vai trò", Scopes: "Phạm vi", Sent: "Đã gửi",
+  Since: "Từ", Source: "Nguồn", Spent: "Đã chi", State: "Trạng thái", Status: "Trạng thái", Steps: "Bước", Subject: "Chủ đề", Tag: "Thẻ",
+  Tags: "Thẻ", Target: "Mục tiêu", Title: "Tiêu đề", Type: "Kiểu", Updated: "Cập nhật", Used: "Đã dùng", When: "Thời điểm",
+  Draft: "Nháp", Active: "Đang chạy", Paused: "Tạm dừng", Completed: "Hoàn thành", Planned: "Kế hoạch", "On hold": "Tạm hoãn", Cancelled: "Đã hủy",
+  Unread: "Chưa đọc", Read: "Đã đọc",
+};
