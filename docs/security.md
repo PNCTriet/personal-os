@@ -62,12 +62,31 @@ and Command Center are covered identically (spec §18). Unit tests assert every 
 | Category | Examples | Default confirmation | Audit |
 |---|---|---|---|
 | READ | list tasks, finance summary | never | only sensitive reads by non-session actors (finance, SENSITIVE rows, Gmail content) |
-| WRITE | create/update task, log interaction | never (except finance & SENSITIVE rows by non-session → `non_session`) | always |
+| WRITE | create/update task, log interaction | never (except finance & SENSITIVE rows by non-session → `non_session`; small-expense exception below) | always |
 | DELETE | soft delete anything, external delete (Google event) | `non_session`; UI shows dialog for session | always |
 | EXECUTE | send email (Gmail/Resend), push/cancel calendar event with attendees, Notion write | `non_session`; `always` for sending to >1 recipient or enrolling leads in a campaign | always |
 
 Spec §19 confirmation list mapped: send email → EXECUTE; delete data → DELETE; financial actions → finance WRITE/DELETE;
 sensitive relationship data → SENSITIVE rows; external destructive → DELETE/EXECUTE.
+
+### Small-expense exception (ADR-012, accepted 2026-09-29)
+`finance.transactions.create` by a non-session actor skips confirmation **only** for a plain VND expense with
+`abs(amount_minor) < 50000` (strictly below 50,000 VND; 50,000 itself is gated), into an existing non-archived account,
+no transfer/debt link/income, with an `Idempotency-Key`. Other currencies, income, transfers, debt-linked rows and
+every update/delete stay gated. Expressed in the registry as a pure predicate:
+```ts
+defineOperation({
+  id: 'finance.transactions.create', category: 'WRITE', scopes: ['finance.write'],
+  confirmation: { mode: 'non_session_unless', rule: 'finance.small_expense_vnd_lt_50000',
+                  when: (i) => i.kind === 'expense' && !i.debt_id && !i.transfer_group_id
+                               && i.currency === 'VND' && -i.amount_minor < AI_EXPENSE_AUTO_RECORD_LIMIT.VND },
+  audit: 'always', classificationAware: true,
+});
+```
+A waived action is still an `ai_actions` row (`auto_approval_rule` set) plus an `audit_logs` row, appears in Activity as
+"auto-recorded", and can be undone by the owner in one click (session soft delete, audited). Boundary tests: 49,999 VND
+passes; 50,000 VND, 49,999 USD-minor, income, transfer, update, delete → 202. The threshold is a code constant
+(`src/modules/finance/domain.ts`), not env/DB. Open question: rolling 24 h cap on waived totals (decisions.md ADR-012).
 
 ## 4. Confirmation flow
 ```mermaid
@@ -123,6 +142,9 @@ in exactly one file (`src/lib/supabase/admin.ts`, `server-only`).
 - Decrypt only inside `src/integrations/core/vault.ts`, only server-side, only at call time; never returned by any API.
 - Rotation: deploy new key as current + old as `TOKEN_ENCRYPTION_KEY_PREVIOUS`, re-encrypt job, remove old.
 - Refresh failure (`invalid_grant`) → account `status=expired`, integration health shows reconnect; no retry storm.
+- Google (personal @gmail.com, OAuth app External + **Testing**, ADR-013): refresh tokens die 7 days after consent.
+  `integration_accounts.refresh_token_expires_at` is set at consent; banner from T-48 h; Phase 8 cron reminder at T-24 h.
+  Reconnect revokes the previous token. The app is not published, so no Google verification/CASA applies.
 
 ## 9. Audit (spec §22)
 `audit_logs` row fields: actor_type, actor_id, source, action (= operation id), category, entity_type, entity_id,

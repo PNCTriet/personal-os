@@ -24,7 +24,7 @@ not in the proposed schema until its phase.
 |---|---|---|---|
 | **PUBLIC** | Safe to publish (portfolio project, public bio). | nothing by default | Any read scope. Future public endpoints may expose. |
 | **PRIVATE** | Normal personal data. | most rows | Domain `*.read` scope. Included in generic search. |
-| **SENSITIVE** | Harm if leaked: romantic/family/health context, finance, private memories, email bodies. | all finance tables (domain rule, no column); `relationships.kind = romantic` (DB check); owner can mark any row | Requires domain scope **plus** `sensitive.read`. **Never** returned by generic/cross-domain search (`search_notes`, timeline, today) unless the caller holds `sensitive.read` and the tool explicitly requests it. Writes to sensitive rows by non-session actors require confirmation. |
+| **SENSITIVE** | Harm if leaked: romantic/family/health context, finance, private memories, email bodies. | all finance tables (domain rule, no column); `relationships.kind = romantic` (DB check); owner can mark any row | Requires domain scope **plus** `sensitive.read`. **Never** returned by generic/cross-domain search (`search_notes`, timeline, today) unless the caller holds `sensitive.read` and the tool explicitly requests it. Writes to sensitive rows by non-session actors require confirmation (sole exception: plain VND expense < 50,000 by AI/API key, audited + undoable — ADR-012). |
 
 Classification is a column (`data_classification` enum) on content tables; for finance it is implied by the domain.
 Filtering happens in repositories (single `applyClassificationFilter(ctx)` helper), not in each route.

@@ -7,7 +7,7 @@ be replaced without touching domain code.
 ## 1. Flow
 ```mermaid
 flowchart LR
-    C["ChatGPT / agent<br/>(MCP client)"] -->|"MCP Streamable HTTP<br/>Bearer token"| M["/api/mcp"]
+    C["Claude / ChatGPT / agent<br/>(MCP client)"] -->|"MCP Streamable HTTP<br/>Bearer token"| M["/api/mcp"]
     CC["AI Command Center<br/>(/api/v1/ai/command)"] --> R
     M --> R["Tool registry<br/>src/ai/registry.ts"]
     R -->|"zod parse args"| X["Tool executor<br/>ctx(actor=ai, scopes)"]
@@ -37,19 +37,19 @@ export const completeTask = defineTool({
 ## 3. Tool catalogue
 | Tool | Operation | Category | Confirmation (non-session) | MCP | Phase |
 |---|---|---|---|---|---|
-| `get_today` | `platform.today` | READ | – | ✔ | 1 (tasks only) → grows |
-| `get_tasks` | `tasks.list` | READ | – | ✔ | 1 |
-| `get_project` | `projects.get` | READ | – | ✔ | 1 |
-| `create_task` | `tasks.create` | WRITE | – | ✔ | 1 |
-| `update_task` | `tasks.update` | WRITE | – | | 1 |
-| `complete_task` | `tasks.complete` | WRITE | – | ✔ | 1 |
-| `create_project` | `projects.create` | WRITE | – | | 1 |
-| `get_action_status` | `platform.ai_action.get` | READ | – | ✔ | 1 |
+| `get_today` | `platform.today` | READ | – | ✔ | 1.5 (tasks only) → grows |
+| `get_tasks` | `tasks.list` | READ | – | ✔ | 1.5 |
+| `get_project` | `projects.get` | READ | – | ✔ | 7 |
+| `create_task` | `tasks.create` | WRITE | – | ✔ | 1.5 |
+| `update_task` | `tasks.update` | WRITE | – | ✔ | 1.5 |
+| `complete_task` | `tasks.complete` | WRITE | – | ✔ | 1.5 |
+| `create_project` | `projects.create` | WRITE | – | | 7 |
+| `get_action_status` | `platform.ai_action.get` | READ | – | ✔ | 1.5 |
 | `get_calendar` | `calendar.list` | READ | – | ✔ | 2 |
 | `schedule_event` | `calendar.create` | WRITE/EXECUTE (Google push) | if attendees | ✔ | 2 |
 | `update_event` | `calendar.update` | WRITE/EXECUTE | if attendees | | 2 |
 | `get_finance_summary` | `finance.summary` | READ (sensitive) | – | ✔ | 3 |
-| `record_transaction` | `finance.transactions.create` | WRITE (finance) | **yes** | ✔ | 3 |
+| `record_transaction` | `finance.transactions.create` | WRITE (finance) | **yes**, except VND expense < 50,000 (ADR-012) | ✔ | 3/7 |
 | `search_email` | `gmail.search` | READ (sensitive) | – | ✔ | 4 |
 | `draft_email` | `gmail.draft.create` | WRITE | – | ✔ | 4 |
 | `send_email` | `gmail.send` / `outreach.send` | EXECUTE | **yes** | ✔ | 4 |
@@ -62,7 +62,8 @@ export const completeTask = defineTool({
 | `create_follow_up` | `tasks.create` (kind=follow_up) | WRITE | – | | 6 |
 | `remember` / `correct_memory` | `memory.create/correct` | WRITE | – | | 6 |
 
-MCP exposes exactly the spec §18 list (✔) plus `get_action_status`; others are Command-Center-only until needed.
+MCP exposes the spec §18 list (✔) plus `get_action_status` and `update_task`; others are Command-Center-only until needed.
+**Phase 1.5 MCP slice (ADR-017, accepted 2026-09-29):** only the rows marked 1.5 — task tools + `get_action_status`.
 No `run_sql`, `http_request`, `delete_*` tools in v1. Deletion stays a UI action.
 
 ## 4. Permissions (no separate AI security model)
@@ -72,7 +73,9 @@ No `run_sql`, `http_request`, `delete_*` tools in v1. Deletion stays a UI action
 - Classification: tool outputs pass through the same repository filter; SENSITIVE rows appear only if the token holds `sensitive.read` **and** the tool is sensitive-aware.
 
 ## 5. ai_actions + audit_logs
-- Every tool invocation (including reads) → one `ai_actions` row: tool, operation, category, status, redacted input, `input_hash`, result summary, entity, request id, client (`chatgpt-mcp`, …).
+- Every tool invocation (including reads) → one `ai_actions` row: tool, operation, category, status, redacted input, `input_hash`, result summary, entity, request id, client (`claude-mcp`, `chatgpt-mcp`, …).
+- Confirmation waived by an explicit rule (only ADR-012's small VND expense today) → `requires_confirmation=false`,
+  `auto_approval_rule` set, status goes straight to `executing → succeeded`; listed as "auto-recorded" with Undo.
 - Writes/executes/denials also → `audit_logs` with `ai_action_id` (security.md §9). Sensitive reads → audit too.
 - Status machine: `pending_confirmation → confirmed → executing → succeeded|failed`; `pending_confirmation → rejected|expired`; `denied` (authorization failure). Non-confirmed actions skip straight to `executing`.
 - "What did AI do today?" = `GET /api/v1/activity?actor_type=ai&since=…` or `ai_actions` list in Settings.
@@ -96,7 +99,12 @@ the model is instructed (tool description) to tell the owner to approve in Perso
   maps args → service call exactly and that confirmation/denial paths hold, with no LLM in the loop (spec §32).
 
 ## 8. MCP server
+- **Timing (ADR-017):** thin slice in Phase 1.5 (right after Phase 1): `/api/mcp` + the 1.5 tools above, real registry,
+  real `ai_actions`. **First client: Claude** (tentative): Claude Code via `claude mcp add --transport http personal-os
+  https://<prod>/api/mcp --header "Authorization: Bearer pk_live_…"`; Claude.ai/Desktop custom connectors need OAuth 2.1
+  or the (plan-dependent, beta) static request header — used if available, else OAuth lands in Phase 7 with ChatGPT.
+  Suggested key: name `claude-mcp`, scopes `tasks.read tasks.write projects.read`, 90-day expiry.
 - Transport: MCP Streamable HTTP at `/api/mcp` (stateless mode; works on Vercel serverless), using the official TypeScript SDK (`@modelcontextprotocol/sdk`) or Vercel's `mcp-handler` adapter.
-- Auth v1: `Authorization: Bearer pk_live_…` (works for Claude/Cursor-style clients and scripts).
-- Auth for ChatGPT connectors: MCP spec's OAuth 2.1 authorization (protected-resource metadata + authorization server). Options: Supabase Auth's OAuth 2.1 server capability (verify maturity at Phase 7) or a minimal self-hosted authorization server issuing tokens that map to an API-key-like scope set. Decide at Phase 7 (ADR-017); the permission layer does not change.
+- Auth v1: `Authorization: Bearer pk_live_…` (works for Claude Code/Cursor-style clients and scripts).
+- Auth for ChatGPT and Claude.ai/Desktop connectors: MCP spec's OAuth 2.1 authorization (protected-resource metadata + authorization server). Options: Supabase Auth's OAuth 2.1 server capability (verify maturity at Phase 7) or a minimal self-hosted authorization server issuing tokens that map to an API-key-like scope set. Decide at Phase 7 (ADR-017); the permission layer does not change.
 - Provider independence: nothing in `src/ai` depends on OpenAI types; Command Center LLM behind `LlmProvider` interface (`AI_PROVIDER`).

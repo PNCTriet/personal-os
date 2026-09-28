@@ -6,6 +6,8 @@
 --  (Phase 1 ships only: profiles, companies, people (minimal, for task FKs), projects,
 --  tasks, task_dependencies, api_keys, ai_actions, audit_logs, idempotency_keys).
 --  See docs/schema.md.
+--  Accepted 2026-09-29: ADR-003 (supabase-js, no ORM), ADR-012 (confirmation flow +
+--  small-expense rule), ADR-013 (personal Gmail, OAuth Testing mode), ADR-015 (cuts/merges).
 --
 --  Conventions
 --  * Every row carries user_id -> auth.users (single owner today; RLS-ready).
@@ -687,7 +689,8 @@ create table integration_accounts (
   display_name        text,                 -- e.g. the Google account email
   status              integration_status not null default 'active',
   scopes              text[] not null default '{}',   -- scopes actually granted by provider
-  token_expires_at    timestamptz,
+  token_expires_at    timestamptz,          -- access token expiry
+  refresh_token_expires_at timestamptz,     -- Google OAuth app in Testing mode: consent + 7 days (ADR-013); null = no known expiry
   sync_state          jsonb not null default '{}'::jsonb,  -- e.g. {"calendar:primary":{"sync_token":"..."}}
   metadata            jsonb not null default '{}'::jsonb,
   last_synced_at      timestamptz,
@@ -765,7 +768,7 @@ create table ai_actions (
   user_id                 uuid not null references auth.users(id) on delete cascade,
   actor_type              actor_type not null check (actor_type in ('ai', 'api_key')),
   api_key_id              uuid references api_keys(id) on delete set null,
-  client                  text,                -- 'chatgpt-mcp', 'claude-mcp', 'command-center'
+  client                  text,                -- 'claude-mcp' (first client, ADR-017), 'chatgpt-mcp', 'command-center'
   tool_name               text not null,       -- 'send_email'
   operation               text not null,       -- permission registry id, 'gmail.send'
   category                action_category not null,
@@ -776,6 +779,10 @@ create table ai_actions (
   error                   text,
   requires_confirmation   boolean not null default false,
   confirmation_expires_at timestamptz,
+  -- Set when a normally gated operation ran without confirmation under an explicit rule, e.g.
+  -- 'finance.small_expense_vnd_lt_50000' (ADR-012: VND expense strictly below 50,000). The rule itself
+  -- (threshold, predicate) lives in code; this column makes every waiver auditable and reversible.
+  auto_approval_rule      text check (auto_approval_rule ~ '^[a-z0-9_.]+$'),
   confirmed_at            timestamptz,
   rejected_at             timestamptz,
   executed_at             timestamptz,
@@ -785,8 +792,11 @@ create table ai_actions (
   created_at              timestamptz not null default now(),
   updated_at              timestamptz not null default now(),
   constraint ai_actions_confirmation_chk check (
-    not requires_confirmation or confirmation_expires_at is not null)
+    not requires_confirmation or confirmation_expires_at is not null),
+  constraint ai_actions_auto_approval_chk check (
+    auto_approval_rule is null or not requires_confirmation)
 );
+create index ai_actions_auto_approved_idx on ai_actions (user_id, created_at desc) where auto_approval_rule is not null;
 create index ai_actions_user_created_idx on ai_actions (user_id, created_at desc);
 create index ai_actions_pending_idx on ai_actions (user_id, confirmation_expires_at) where status = 'pending_confirmation';
 

@@ -2,6 +2,8 @@
 
 File: [`supabase/migrations/0000_proposed_schema.sql`](../supabase/migrations/0000_proposed_schema.sql) — **proposal, not
 an applied migration.** 30 tables, 4 views, 35 enums, RLS on every table.
+Table set (cuts/merges/additions) **accepted 2026-09-29 (ADR-015)**; data access via supabase-js + generated types, no ORM
+(ADR-003, accepted). Remaining pending ADRs (001, 002, 006, 007) can still change details before the Phase 1 split.
 
 ## Validation
 `scripts/validate-schema.sh` runs, against a scratch PostgreSQL 17:
@@ -10,7 +12,8 @@ an applied migration.** 30 tables, 4 views, 35 enums, RLS on every table.
 3. `supabase/validation/01_smoke_test.sql` — behavioural asserts as the `authenticated` role: task code assignment and
    move aliasing, code immutability, dependency cycle rejection, done⇔completed_at, balances/transfer/debt outstanding,
    currency guard, romantic⇒sensitive, external-ref cleanup + calendar 1:1, secrets unreadable, audit append-only,
-   derived timeline, cross-user RLS isolation (incl. through views), anon denied. **Result: PASSED.**
+   derived timeline, auto-approval waiver vs pending confirmation (ADR-012), cross-user RLS isolation (incl. through
+   views), anon denied. **Result: PASSED** (re-run 2026-09-29).
 
 ## Conventions
 - `id uuid pk default gen_random_uuid()`; `user_id uuid not null → auth.users on delete cascade` on **every** table (uniform RLS, multi-user-ready at ~zero cost).
@@ -51,18 +54,18 @@ and we can add an `origin actor_type` column to tasks/notes later if the UI need
 | Outreach | `email_campaigns`, `email_sequence_steps`, `campaign_enrollments` | 4 | step order unique; enrollment unique (campaign, lead); due index |
 | Outreach | `email_messages` | 4 | sent⇔sent_at; unique (provider, provider_message_id) |
 | Outreach | `email_events` | 4 | unique (provider, provider_event_id) = idempotent webhooks |
-| Integrations | `integration_accounts` | 2 | unique (user, provider, external_account_id) |
+| Integrations | `integration_accounts` | 2 | unique (user, provider, external_account_id); `refresh_token_expires_at` drives Google re-auth reminders (ADR-013) |
 | Integrations | `integration_secrets` | 2 | service-role only (RLS on, no policies, no grants) |
 | Integrations | `external_references` | 2 | unique link; one OS event per Google event (partial unique) |
 | Platform | `api_keys` | 1 | unique `secret_hash`; `secret_hash` not selectable by `authenticated` (column grants) |
-| Platform | `ai_actions` | 1 (table) / 7 (use) | pending index; confirmation needs expiry |
+| Platform | `ai_actions` | 1 (table) / 1.5 (MCP slice) / 7 | pending index; confirmation needs expiry; `auto_approval_rule` records confirmation waivers (ADR-012 small-expense rule), never together with `requires_confirmation` |
 | Platform | `audit_logs` | 1 | bigint identity; append-only trigger; indexes by time, entity, actor |
 | Platform | `idempotency_keys` | 1 | pk (user, key); 24 h expiry; service-role only |
 | Platform | `webhook_deliveries` | 2/4/8 | unique (provider, delivery_id); service-role only |
 
 Views: `finance_account_balances`, `debt_balances`, `email_message_delivery`, `timeline_events`.
 
-## Cuts, merges, additions vs spec §10
+## Cuts, merges, additions vs spec §10 (ADR-015 — accepted 2026-09-29)
 
 | Spec table | Decision | Why |
 |---|---|---|

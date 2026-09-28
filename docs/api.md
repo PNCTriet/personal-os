@@ -137,10 +137,13 @@ CSRF: cookie-auth mutations require `Origin` = `APP_URL` (checked in the handler
 | POST | `/api-keys/:id/rotate` | | 201 new key; old key valid 24 h then revoked |
 | POST | `/api-keys/:id/revoke` | | 200 |
 
-### Approvals (session only; table exists P1, used by API keys from P1 and AI from P7)
+### Approvals (session only; table exists P1, used by API keys from P1 and AI from P1.5 MCP slice)
 | GET | `/approvals?status=pending_confirmation` | pending `ai_actions` with human summary |
 | POST | `/approvals/:id/confirm` | executes stored args exactly; returns result |
 | POST | `/approvals/:id/reject` | |
+| GET | `/approvals?auto_approved=true` | actions that ran under an `auto_approval_rule` (ADR-012 small VND expense, from P3) |
+
+Undo of an auto-recorded expense = `DELETE /finance/transactions/:id` from the session (soft delete, audited).
 
 ## 3. Later phases (contract level)
 
@@ -148,7 +151,7 @@ CSRF: cookie-auth mutations require `Origin` = `APP_URL` (checked in the handler
 |---|---|---|---|
 | 2 | Calendar | `GET /calendar/events?from&to` · `POST /calendar/events` (`sync_to_google` bool) · `GET/PATCH/DELETE /calendar/events/:id` · `POST /tasks/:id/schedule` `{starts_at, ends_at}` · `GET /calendar/availability?from&to` | `calendar.read/write` |
 | 2 | Integrations | `GET /integrations` (catalog + accounts + health) · `GET /integrations/google/connect?capabilities=calendar` → 302 · `GET /integrations/google/callback` · `POST /integrations/:accountId/sync` · `DELETE /integrations/:accountId` | `integrations.manage` (session only) |
-| 3 | Finance | `GET /finance/summary?period=` · `GET/POST /finance/accounts` · `GET/POST /finance/transactions` · `PATCH/DELETE /finance/transactions/:id` · `POST /finance/transfers` · `GET/POST /finance/debts` · `GET /finance/debts/:id` · `GET/POST /finance/goals` · `GET /finance/spendable?until=` | `finance.read/write` (+ confirmation for writes by non-session) |
+| 3 | Finance | `GET /finance/summary?period=` · `GET/POST /finance/accounts` · `GET/POST /finance/transactions` · `PATCH/DELETE /finance/transactions/:id` · `POST /finance/transfers` · `GET/POST /finance/debts` · `GET /finance/debts/:id` · `GET/POST /finance/goals` · `GET /finance/spendable?until=` | `finance.read/write` (+ confirmation for writes by non-session, except a plain VND expense < 50,000 — ADR-012) |
 | 4 | People | `GET/POST /people` · `GET/PATCH/DELETE /people/:id` | `people.read/write` |
 | 4 | Communication | `GET/POST /communication/leads` · `PATCH /communication/leads/:id` · `GET/POST /communication/campaigns` · `POST /communication/campaigns/:id/enroll` · `POST /communication/email/send` (Resend; `Idempotency-Key` required) · `GET /communication/messages` · `GET /communication/gmail/search?q=` · `GET /communication/gmail/threads/:threadId` · `POST /communication/gmail/drafts` · `POST /communication/gmail/drafts/:id/send` | `outreach.read/write/send`, `gmail.read/draft/send` |
 | 5 | Knowledge | `GET /notes?q&tag` · `POST /notes` · `GET/PATCH/DELETE /notes/:id` · `GET /notion/search?q` · `POST /notes/:id/link-notion` · `POST /external-references` · `DELETE /external-references/:id` · `GET /github/issues?repo` | `notes.read/write`, `notion.read/write`, `github.read` |

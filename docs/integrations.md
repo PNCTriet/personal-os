@@ -34,28 +34,44 @@ unique partial index guaranteeing 1:1 for calendar events. The API still exposes
 (`project.notion_page_id` as a computed read field) so consumers don't care.
 
 ## 3. OAuth flow (Google, Notion)
+**Google setup (ADR-013, accepted 2026-09-29):** the Founder uses a personal @gmail.com account, so the OAuth app is
+**External**, publishing status **Testing**, with the Founder as the only test user; separate Google Cloud projects for
+dev/staging and production. Consequence: refresh tokens expire **7 days after consent** (Calendar and Gmail together,
+same client) → weekly one-click reconnect, driven by `refresh_token_expires_at` (below). Publishing to production is not
+planned: restricted Gmail scopes would require verification + annual CASA security assessment.
+
 1. `GET /api/v1/integrations/google/connect?capabilities=calendar` (session, `integrations.manage`) → server creates
    `state` (random, stored in HttpOnly cookie, 10 min) + PKCE verifier → 302 to provider with **incremental** scopes
    (`include_granted_scopes=true`, `access_type=offline`, `prompt=consent` first time).
 2. Callback validates `state`, exchanges code server-side, reads `sub`/email, upserts `integration_accounts`, encrypts
    tokens into `integration_secrets`, audits `integration.connect`.
+   For Google in Testing mode also set `refresh_token_expires_at = now() + 7 days` on every (re)consent.
 3. Token use: `getAccessToken(accountId)` refreshes if `token_expires_at < now()+60s` (single-flight per account via
    `SELECT … FOR UPDATE` in an RPC or optimistic `updated_at` check); `invalid_grant` → `status=expired`, audit, UI banner.
 4. Disconnect: revoke at provider (best effort), delete secrets row, `status=disconnected`, keep `external_references` (history).
+5. Reconnect (Google weekly): same scopes, `prompt=consent`, reuses the account row and `sync_state` (incremental sync
+   resumes), revokes the superseded refresh token (Google keeps max 100 per client+account and silently drops the oldest).
 
 Tokens never reach the browser, never logged, never in API responses.
 
 ## 4. Adapters
 
 ### Google Calendar (Phase 2)
-- Scope: `https://www.googleapis.com/auth/calendar.events` (+ `calendar.readonly` for calendar list). Not full `calendar`.
+- Scope: `https://www.googleapis.com/auth/calendar.events` + `calendar.calendarlist.readonly` (calendar list). Not full `calendar`, not `calendar.readonly`.
 - Operations: list (incremental via `syncToken`), get, insert, patch, cancel/delete. Store `event.id` + `etag` in `external_references(external_type=calendar_event)`.
 - Sync (no background jobs until P8): on-demand + on dashboard load if `last_synced_at > 10 min`; window −30 d / +180 d; `singleEvents=true` (recurring series expanded to instances). `410 Gone` → full resync of window.
 - Ownership/conflicts (ADR-014): events created in the OS are pushed to Google (`sync_status=pending_push → synced`). Events created in Google are imported as OS rows (so the OS can reason over them) with link. On conflict, compare `remote_updated_at` vs OS `updated_at`: **last writer wins per event**, loser version written to audit. Deleted in Google → OS event `status=cancelled`, `sync_status=deleted_remote`.
 - Push notifications (`events.watch`) only in Phase 8; they just trigger the same incremental sync (idempotent by nature).
 
 ### Gmail (Phase 4)
-- Scopes: `gmail.readonly`, `gmail.compose` (drafts + send). `gmail.send` alone insufficient for drafts. These are **restricted scopes** (see risks R-03).
+- Scopes (added incrementally at Phase 4; final choice at Phase 4 kickoff, ADR-013):
+  | Option | Scopes | Gives | Class |
+  |---|---|---|---|
+  | **Default** | `gmail.readonly` + `gmail.compose` | `q` search, read bodies/threads, drafts, send | restricted |
+  | Metadata-only | `gmail.metadata` + `gmail.send` | headers/labels only; no bodies, no `q` search, no drafts | restricted + sensitive |
+  | Send-only | `gmail.send` | send only | sensitive |
+  Never `https://mail.google.com/` or `gmail.modify`. Restricted scopes are fine in Testing mode (no verification) but
+  would require verification + CASA if the app were ever published (risks R-03).
 - Operations: search (`q`), get message, get thread, create draft, send draft, reply (thread id + `In-Reply-To`).
 - Nothing mirrored. Search/read results are returned live, marked untrusted for AI. OS-initiated drafts/sends logged in `email_messages(provider=gmail)`; linking a thread to a person/task creates `external_references(gmail_thread)`.
 - Sending: `gmail.send` scope + confirmation for non-session actors + `Idempotency-Key`.
@@ -89,5 +105,6 @@ Route: `/api/webhooks/<provider>` (Node runtime, raw body).
 5. Payloads stored redacted (no email bodies), 30-day retention (P8 job).
 
 ## 6. Health & observability
-`GET /api/v1/integrations` returns per account: status, `last_synced_at`, `last_error`, token expiry, recent failure count
-(from audit). Adapter calls log provider, operation, latency, status code, request id — never tokens or bodies.
+`GET /api/v1/integrations` returns per account: status, `last_synced_at`, `last_error`, token expiry,
+`refresh_token_expires_at` + `reauth_due_in` (Google Testing mode), recent failure count (from audit). Dashboard banner
+"Reconnect Google" from T-48 h; Phase 8 daily health-check cron notifies at T-24 h and on `invalid_grant`. Adapter calls log provider, operation, latency, status code, request id — never tokens or bodies.

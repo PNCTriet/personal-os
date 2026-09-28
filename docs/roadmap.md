@@ -6,18 +6,19 @@ Founder demo. Estimates assume 1 engineer + AI assistance; they are sizing, not 
 
 | Phase | Goal | Exit criteria | Size |
 |---|---|---|---|
-| **0 Architecture** | This doc set | Founder approves ADRs in decisions.md | done → review |
+| **0 Architecture** | This doc set | Founder approves ADRs in decisions.md | ADR-003/012/013/015/017 accepted 2026-09-29; 001/002/006/007/009/014 pending |
 | **1 Core OS** | Auth, profile, projects, tasks, deps, audit, API keys, approvals, basic dashboard, `/api/v1` foundation | Founder runs work from `/tasks` daily; a script with an API key creates/completes tasks; activity shows who did what | 2–3 wks |
-| **2 Calendar** | Calendar domain, Google OAuth + token vault, Calendar adapter, sync, task → time block | Scheduling a task creates a Google event; Google edits appear in OS; reconnect flow works | 2 wks |
-| **3 Finance** | Accounts, transactions, transfers, debts/receivables, goals, summary, spendable | Month-end balances match bank to the đồng; all calcs unit-tested | 2 wks |
+| **1.5 MCP slice** (ADR-017) | `/api/mcp` Streamable HTTP, API-key auth, task tools + `get_action_status`, ai_actions logging | Claude (Code) creates/completes tasks via MCP; every call in ai_actions; a DELETE-less tool set; confirmation path demoed | 3–4 days |
+| **2 Calendar** | Calendar domain, Google OAuth + token vault, Calendar adapter, sync, task → time block | Scheduling a task creates a Google event; Google edits appear in OS; weekly reconnect flow works (Testing-mode 7-day refresh tokens, ADR-013) + expiry banner | 2 wks |
+| **3 Finance** | Accounts, transactions, transfers, debts/receivables, goals, summary, spendable | Month-end balances match bank to the đồng; all calcs unit-tested; AI expense < 50,000 VND auto-recorded (audited, undoable), ≥ 50,000 gated (ADR-012) | 2 wks |
 | **4 Communication** | People, companies, leads, Gmail (search/read/draft/send), Resend, campaigns/sequences, email events webhook | Send a 3-step cold sequence to 5 test leads with suppression + audit; Gmail send needs confirmation from API key | 3 wks |
 | **5 Knowledge** | Notes + FTS, Notion adapter, GitHub adapter, external references UI | Link Notion page + GitHub issue to a task and see live metadata | 1–2 wks |
 | **6 Relationships** | Relationships, interactions, important dates, memory model, relationship context, timeline | "Who should I follow up with?" answerable from data via service | 2 wks |
-| **7 AI** | Tool registry, MCP server, AI Command Center, confirmation UX, grounding tests | ChatGPT (or Claude) via MCP runs spec §18 tools under scopes; every call in ai_actions | 2–3 wks |
+| **7 AI** | Remaining tools, MCP OAuth 2.1 (ChatGPT, Claude.ai connectors), AI Command Center, confirmation UX, grounding tests | Claude and ChatGPT via MCP run spec §18 tools under scopes; every call in ai_actions | 2 wks |
 | **8 Automation** | Vercel Cron jobs, webhook-driven processing, reminders, sequences scheduler, purge/retention | Reminders fire for due tasks/important dates; sequences send on schedule; all jobs audited | 2 wks |
 
-Order note: I would consider pulling a **thin Phase 7 slice (MCP with Phase 1 tools)** right after Phase 1 — it proves
-the "AI-native" thesis early and exercises the permission layer while it is small. Open question in ADR-017.
+Order note: **accepted (ADR-017, 2026-09-29)** — a thin MCP slice (task tools only) runs as Phase 1.5 right after
+Phase 1; first client Claude (tentative). Phase 7 shrinks accordingly.
 
 ## Phase 1 breakdown (`HOWL-POS-01`)
 
@@ -50,4 +51,4 @@ Rule: each task is one PR, ≤ ~400 lines diff, with tests and docs. `Dep` = mus
 Critical path: T01 → T04 → T05 → T07 → T08 → T11 → T12 → T17 → T20.
 
 ## Explicitly not in Phase 1
-Calendar, finance, people UI, integrations, MCP (unless ADR-017 pulls it in), background jobs, realtime, file uploads, mobile.
+Calendar, finance, people UI, integrations, MCP (Phase 1.5 slice, ADR-017), background jobs, realtime, file uploads, mobile.

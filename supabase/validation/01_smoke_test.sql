@@ -148,6 +148,21 @@ do $$ begin
   exception when insufficient_privilege then null; end;
 end $$;
 
+-- ADR-012: an auto-approved (small VND expense) AI action is recorded; a waiver cannot coexist with a pending confirmation.
+insert into ai_actions (user_id, actor_type, client, tool_name, operation, category, status, input_hash, auto_approval_rule)
+values (auth.uid(), 'ai', 'claude-mcp', 'record_transaction', 'finance.transactions.create', 'write', 'succeeded',
+        'sha256:test', 'finance.small_expense_vnd_lt_50000');
+do $$ begin
+  assert (select count(*) from ai_actions where auto_approval_rule is not null) = 1, 'auto-approved action recorded';
+  begin
+    insert into ai_actions (user_id, actor_type, tool_name, operation, category, status, input_hash,
+                            requires_confirmation, confirmation_expires_at, auto_approval_rule)
+    values (auth.uid(), 'ai', 'record_transaction', 'finance.transactions.create', 'write', 'pending_confirmation',
+            'sha256:test2', true, now() + interval '15 minutes', 'finance.small_expense_vnd_lt_50000');
+    raise exception 'auto_approval_rule allowed on a confirmation-gated action';
+  exception when check_violation then null; end;
+end $$;
+
 -- Timeline is derived.
 do $$ begin
   assert (select count(*) from timeline_events where event_type = 'task.completed') = 1, 'timeline derives completions';

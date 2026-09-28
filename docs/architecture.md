@@ -14,7 +14,7 @@ Three front doors, **one** application core:
 |---|---|---|---|
 | Web UI | Founder in browser | Supabase session cookie | `app/(dashboard)` → Server Actions/Route Handlers |
 | REST `/api/v1` | Scripts, future consumers | Session **or** `Bearer pk_live_…` API key | `app/api/v1/**/route.ts` |
-| MCP `/api/mcp` | ChatGPT / agents | API key now; OAuth 2.1 when required (ADR-017) | `app/api/mcp/route.ts` |
+| MCP `/api/mcp` | Claude first (Phase 1.5), ChatGPT / agents later | API key now; OAuth 2.1 at Phase 7 (ADR-017) | `app/api/mcp/route.ts` |
 | Webhooks `/api/webhooks/*` | Google, Resend, GitHub | Provider signature | `app/api/webhooks/<provider>/route.ts` |
 
 All four build the same `RequestContext` and call the same application services. Permission checks happen inside the
@@ -84,7 +84,7 @@ personal-os/
 │  │  ├─ (auth)/login/                     # magic link / OTP, owner allowlist
 │  │  ├─ (dashboard)/                      # /, /projects, /tasks, /finance, /calendar, /relationships, /settings
 │  │  ├─ api/v1/<resource>/route.ts        # REST, thin
-│  │  ├─ api/mcp/route.ts                  # MCP Streamable HTTP (Phase 7)
+│  │  ├─ api/mcp/route.ts                  # MCP Streamable HTTP (Phase 1.5 slice, full at Phase 7)
 │  │  └─ api/webhooks/<provider>/route.ts  # Phase 2+/8
 │  ├─ modules/                             # one folder per bounded context
 │  │  ├─ work/        (projects, tasks, dependencies, companies)
@@ -200,7 +200,7 @@ Full list with comments in [`.env.example`](../.env.example). Rules:
 | `TOKEN_ENCRYPTION_KEY` | server | P2 | 32-byte base64 AES-256-GCM key for integration tokens |
 | `TOKEN_ENCRYPTION_KEY_VERSION` | server | P2 | Integer, stored with each ciphertext; enables rotation |
 | `TOKEN_ENCRYPTION_KEY_PREVIOUS` | server | P2 | Optional old key during rotation |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | server | P2 | Google OAuth (Calendar, later Gmail) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | server | P2 | Google OAuth (Calendar, later Gmail). External app in Testing mode, separate GCP project per env (ADR-013) |
 | `GOOGLE_OAUTH_REDIRECT_URI` | server | P2 | `${APP_URL}/api/v1/integrations/google/callback` |
 | `GOOGLE_WEBHOOK_TOKEN` | server | P8 | Shared token for Calendar push channel verification |
 | `RESEND_API_KEY` | server | P4 | Resend sending key (per env) |

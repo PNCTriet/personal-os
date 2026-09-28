@@ -276,6 +276,7 @@ erDiagram
         enum status
         text_array scopes
         timestamptz token_expires_at
+        timestamptz refresh_token_expires_at
         jsonb sync_state
     }
     INTEGRATION_SECRETS {
@@ -311,6 +312,7 @@ erDiagram
         jsonb input
         text input_hash
         timestamptz confirmation_expires_at
+        text auto_approval_rule
     }
     AUDIT_LOGS {
         bigint id PK
