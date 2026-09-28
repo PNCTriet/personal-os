@@ -8,10 +8,11 @@ actions. External services (Google Calendar, Gmail, Notion, GitHub, Resend) are 
 **Stack:** Next.js (App Router, Route Handlers) · TypeScript strict · Tailwind + shadcn/ui · Supabase (Postgres, Auth, RLS) · Zod · Vercel · MCP.
 **Shape:** modular monolith. No microservices, queues, or Redis until a concrete requirement appears.
 
-## Status: Phase 0 — Architecture (awaiting Founder approval)
+## Status: Phase 0 — Architecture (partially approved) → Phase 1 planned
 
-No application code exists yet, on purpose (spec §37). This repo currently holds the architecture, schema proposal and
-decisions to approve before Phase 1. Next step: Founder reviews the ★ decisions in [docs/decisions.md](docs/decisions.md).
+No application code exists yet, on purpose (spec §37). On 2026-09-29 the Founder accepted ADR-003, 012, 013, 015 and 017.
+Still pending Founder: ADR-001, 002, 006 (block Phase 1 start), ADR-007, 009, 014 (block Phases 2–3). See
+[docs/decisions.md](docs/decisions.md). Phase 1 execution plan: [docs/phase-1-plan.md](docs/phase-1-plan.md).
 
 ## Documents
 
@@ -27,7 +28,8 @@ decisions to approve before Phase 1. Next step: Founder reviews the ★ decision
 | [docs/security.md](docs/security.md) | Scopes, operation registry, confirmation flow, auth, RLS, tokens, API keys, audit, rate limits |
 | [docs/integrations.md](docs/integrations.md) | Adapter architecture, OAuth, Google/Gmail/Notion/GitHub/Resend, webhooks |
 | [docs/ai-tools.md](docs/ai-tools.md) | Tool registry, MCP, permissions, ai_actions, grounding |
-| [docs/roadmap.md](docs/roadmap.md) | Phases 0–8, Phase 1 task breakdown (`HOWL-POS-01-Txx`) |
+| [docs/roadmap.md](docs/roadmap.md) | Phases 0–8 (+ 1.5 MCP slice) |
+| [docs/phase-1-plan.md](docs/phase-1-plan.md) | Executable Phase 1 plan (`HOWL-POS-P1-Txx`), estimates, risks, Founder inputs |
 | [docs/risks.md](docs/risks.md) | Technical risks and mitigations |
 | [docs/decisions.md](docs/decisions.md) | ADRs to lock before coding, with open questions |
 | [.env.example](.env.example) | Environment variables (no secrets) |
