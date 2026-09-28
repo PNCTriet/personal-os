@@ -168,6 +168,40 @@ do $$ begin
   assert (select count(*) from timeline_events where event_type = 'task.completed') = 1, 'timeline derives completions';
 end $$;
 
+-- ADR-017: an OAuth-client token (client_id claim) of the OWNER gets nothing via the Data API.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000001","client_id":"chatgpt-test"}', true);
+do $$ begin
+  assert (select count(*) from tasks) = 0, 'OAuth client token cannot read tasks directly';
+  assert (select count(*) from profiles) = 0, 'OAuth client token cannot read profile directly';
+  assert (select count(*) from finance_account_balances) = 0, 'OAuth client token blocked through views';
+  begin
+    insert into tasks (user_id, title) values (auth.uid(), 'via oauth token');
+    raise exception 'OAuth client token insert allowed';
+  exception when insufficient_privilege then null; end;
+end $$;
+select set_config('request.jwt.claims', '', true);
+do $$ begin
+  assert (select count(*) from tasks) > 0, 'normal session token still sees tasks';
+end $$;
+
+-- ADR-017: credential kinds are exclusive (server-side insert, like key creation).
+reset role;
+do $$ begin
+  insert into api_keys (user_id, kind, name, oauth_client_id, scopes)
+  values ('00000000-0000-0000-0000-000000000001', 'oauth_grant', 'ChatGPT', 'chatgpt-test', array['tasks.read']);
+  begin
+    insert into api_keys (user_id, kind, name, oauth_client_id, scopes)
+    values ('00000000-0000-0000-0000-000000000001', 'oauth_grant', 'ChatGPT again', 'chatgpt-test', array['tasks.read']);
+    raise exception 'two active grants for one OAuth client allowed';
+  exception when unique_violation then null; end;
+  begin
+    insert into api_keys (user_id, kind, name, scopes)
+    values ('00000000-0000-0000-0000-000000000001', 'api_key', 'no secret', array['tasks.read']);
+    raise exception 'api_key without secret allowed';
+  exception when check_violation then null; end;
+end $$;
+set local role authenticated;
+
 -- RLS: a second user sees nothing of the owner's data.
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true);
 do $$ begin

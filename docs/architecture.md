@@ -14,7 +14,7 @@ Three front doors, **one** application core:
 |---|---|---|---|
 | Web UI | Founder in browser | Supabase session cookie | `app/(dashboard)` → Server Actions/Route Handlers |
 | REST `/api/v1` | Scripts, future consumers | Session **or** `Bearer pk_live_…` API key | `app/api/v1/**/route.ts` |
-| MCP `/api/mcp` | Claude first (Phase 1.5), ChatGPT / agents later | API key now; OAuth 2.1 at Phase 7 (ADR-017) | `app/api/mcp/route.ts` |
+| MCP `/api/mcp` | Cursor (P1.5a), ChatGPT (P1.5b), Claude/agents later | API key (Cursor) or Supabase-issued OAuth 2.1 token (ChatGPT), same endpoint (ADR-017) | `app/api/mcp/route.ts`, `app/.well-known/oauth-protected-resource/route.ts`, `app/oauth/consent/page.tsx` |
 | Webhooks `/api/webhooks/*` | Google, Resend, GitHub | Provider signature | `app/api/webhooks/<provider>/route.ts` |
 
 All four build the same `RequestContext` and call the same application services. Permission checks happen inside the
@@ -84,7 +84,9 @@ personal-os/
 │  │  ├─ (auth)/login/                     # magic link / OTP, owner allowlist
 │  │  ├─ (dashboard)/                      # /, /projects, /tasks, /finance, /calendar, /relationships, /settings
 │  │  ├─ api/v1/<resource>/route.ts        # REST, thin
-│  │  ├─ api/mcp/route.ts                  # MCP Streamable HTTP (Phase 1.5 slice, full at Phase 7)
+│  │  ├─ api/mcp/route.ts                  # MCP Streamable HTTP, stateless (Phase 1.5a Cursor / 1.5b ChatGPT)
+│  │  ├─ .well-known/oauth-protected-resource/route.ts  # RFC 9728 metadata (Phase 1.5b)
+│  │  ├─ oauth/consent/page.tsx           # Supabase OAuth 2.1 server consent UI (Phase 1.5b)
 │  │  └─ api/webhooks/<provider>/route.ts  # Phase 2+/8
 │  ├─ modules/                             # one folder per bounded context
 │  │  ├─ work/        (projects, tasks, dependencies, companies)
@@ -209,5 +211,5 @@ Full list with comments in [`.env.example`](../.env.example). Rules:
 | `GITHUB_TOKEN_MODE` | server | P5 | `pat` (v1) \| `app` |
 | `GITHUB_APP_ID` / `GITHUB_APP_PRIVATE_KEY` / `GITHUB_WEBHOOK_SECRET` | server | P8 | Only if GitHub App chosen |
 | `AI_PROVIDER` / `AI_API_KEY` / `AI_MODEL` | server | P7 | Command Center LLM; provider-agnostic |
-| `MCP_OAUTH_ISSUER` | server | P7 | Only if MCP OAuth 2.1 is enabled |
+| `MCP_OAUTH_ISSUER` | server | P1.5b | Supabase Auth issuer (`${NEXT_PUBLIC_SUPABASE_URL}/auth/v1`) accepted for MCP OAuth tokens; empty = MCP OAuth disabled (API keys only) |
 | `CRON_SECRET` | server | P8 | Vercel Cron auth |

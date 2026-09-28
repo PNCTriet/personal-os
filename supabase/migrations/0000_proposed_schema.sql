@@ -7,7 +7,9 @@
 --  tasks, task_dependencies, api_keys, ai_actions, audit_logs, idempotency_keys).
 --  See docs/schema.md.
 --  Accepted 2026-09-29: ADR-003 (supabase-js, no ORM), ADR-012 (confirmation flow +
---  small-expense rule), ADR-013 (personal Gmail, OAuth Testing mode), ADR-015 (cuts/merges).
+--  small-expense rule), ADR-013 (personal Gmail, OAuth Testing mode), ADR-015 (cuts/merges),
+--  ADR-017 (MCP: Cursor via API key, ChatGPT via Supabase OAuth 2.1 grants -> api_keys.kind).
+--  ADR-004/005/008/010/011/016/018/019/020/021 accepted by the Technical Director.
 --
 --  Conventions
 --  * Every row carries user_id -> auth.users (single owner today; RLS-ready).
@@ -71,6 +73,7 @@ create type audit_status         as enum ('success', 'failure', 'denied', 'pendi
 create type ai_action_status     as enum ('pending_confirmation', 'confirmed', 'rejected', 'expired',
                                           'executing', 'succeeded', 'failed', 'denied');
 create type webhook_status       as enum ('received', 'processed', 'ignored', 'failed');
+create type credential_kind      as enum ('api_key', 'oauth_grant');   -- ADR-017
 
 -- -----------------------------------------------------------------------------
 -- Generic trigger functions
@@ -744,13 +747,19 @@ create unique index external_references_calendar_1to1_uq on external_references 
 -- =============================================================================
 -- PLATFORM: API keys, AI actions, audit, idempotency, webhooks
 -- =============================================================================
+-- Credentials of non-session actors. kind='api_key': our pk_ secret (Cursor, scripts).
+-- kind='oauth_grant': created when the owner approves an MCP OAuth client (ChatGPT) on the
+-- consent page; tokens are issued by Supabase Auth's OAuth 2.1 server and carry `client_id`,
+-- which the MCP endpoint maps to this row for scopes, revocation and audit (actor_id = id).
 create table api_keys (
   id                           uuid primary key default gen_random_uuid(),
   user_id                      uuid not null references auth.users(id) on delete cascade,
+  kind                         credential_kind not null default 'api_key',
   name                         text not null check (length(name) between 1 and 100),
   environment                  text not null default 'live' check (environment in ('live', 'test')),
-  prefix                       text not null,             -- display only, e.g. 'pk_live_7Hk2'
-  secret_hash                  bytea not null,            -- sha256(full key); key has 256-bit entropy
+  prefix                       text,                      -- api_key only: display, e.g. 'pk_live_7Hk2'
+  secret_hash                  bytea,                     -- api_key only: sha256(full key); 256-bit entropy
+  oauth_client_id              text,                      -- oauth_grant only: Supabase OAuth client_id
   scopes                       text[] not null check (cardinality(scopes) >= 1),
   sensitive_scopes_approved_at timestamptz,               -- set when owner re-authenticated to grant sensitive scopes
   created_at                   timestamptz not null default now(),
@@ -758,9 +767,14 @@ create table api_keys (
   last_used_at                 timestamptz,
   revoked_at                   timestamptz,
   constraint api_keys_hash_uq unique (secret_hash),
-  constraint api_keys_expiry_chk check (expires_at is null or expires_at > created_at)
+  constraint api_keys_expiry_chk check (expires_at is null or expires_at > created_at),
+  constraint api_keys_kind_chk check (
+    (kind = 'api_key'     and secret_hash is not null and prefix is not null and oauth_client_id is null) or
+    (kind = 'oauth_grant' and oauth_client_id is not null and secret_hash is null and prefix is null))
 );
 create index api_keys_user_active_idx on api_keys (user_id) where revoked_at is null;
+create unique index api_keys_active_oauth_client_uq on api_keys (user_id, oauth_client_id)
+  where kind = 'oauth_grant' and revoked_at is null;
 
 -- One row per agent tool invocation (AI/MCP) or confirmation-gated API-key request.
 create table ai_actions (
@@ -768,7 +782,7 @@ create table ai_actions (
   user_id                 uuid not null references auth.users(id) on delete cascade,
   actor_type              actor_type not null check (actor_type in ('ai', 'api_key')),
   api_key_id              uuid references api_keys(id) on delete set null,
-  client                  text,                -- 'claude-mcp' (first client, ADR-017), 'chatgpt-mcp', 'command-center'
+  client                  text,                -- 'cursor-mcp' (first, ADR-017), 'chatgpt-mcp', later 'claude-mcp', 'command-center'
   tool_name               text not null,       -- 'send_email'
   operation               text not null,       -- permission registry id, 'gmail.send'
   category                action_category not null,
@@ -979,12 +993,30 @@ create policy audit_owner_insert on audit_logs for insert to authenticated with 
 -- api_keys: owner may list (not the hash) and revoke; creation goes through the server.
 alter table api_keys enable row level security;
 revoke all on api_keys from anon, authenticated;
-grant select (id, user_id, name, environment, prefix, scopes, sensitive_scopes_approved_at,
+grant select (id, user_id, kind, name, environment, prefix, oauth_client_id, scopes, sensitive_scopes_approved_at,
               created_at, expires_at, last_used_at, revoked_at) on api_keys to authenticated;
 grant update (revoked_at) on api_keys to authenticated;
 create policy api_keys_owner_select on api_keys for select to authenticated using (user_id = (select auth.uid()));
 create policy api_keys_owner_revoke on api_keys for update to authenticated
   using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+-- ADR-017: tokens minted by Supabase's OAuth 2.1 server (for ChatGPT) are ordinary `authenticated`
+-- JWTs plus a `client_id` claim. They must work ONLY through /api/mcp (scopes enforced in the app),
+-- never directly against the Data API. RESTRICTIVE policy = AND-ed with every permissive policy.
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'profiles','companies','projects','people','tasks','task_dependencies','calendar_events','finance_accounts','debts',
+    'financial_goals','finance_transactions','relationships','interactions','important_dates','notes',
+    'memories','leads','email_campaigns','email_sequence_steps','campaign_enrollments','email_messages',
+    'email_events','integration_accounts','external_references','ai_actions','audit_logs','api_keys']
+  loop
+    execute format($p$create policy no_oauth_client_tokens on public.%I as restrictive for all to authenticated
+                      using ((select auth.jwt()) ->> 'client_id' is null)
+                      with check ((select auth.jwt()) ->> 'client_id' is null)$p$, t);
+  end loop;
+end $$;
 
 revoke all on all functions in schema private from public, anon, authenticated;
 grant usage on schema private to authenticated, service_role;  -- triggers run as invoker

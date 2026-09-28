@@ -10,7 +10,8 @@ actions. External services (Google Calendar, Gmail, Notion, GitHub, Resend) are 
 
 ## Status: Phase 0 — Architecture (partially approved) → Phase 1 planned
 
-No application code exists yet, on purpose (spec §37). On 2026-09-29 the Founder accepted ADR-003, 012, 013, 015 and 017.
+No application code exists yet, on purpose (spec §37). On 2026-09-29 the Founder accepted ADR-003, 012, 013, 015 and 017
+(MCP clients: Cursor, then ChatGPT) and the Technical Director accepted ADR-004, 005, 008, 010, 011, 016, 018–021.
 Still pending Founder: ADR-001, 002, 006 (block Phase 1 start), ADR-007, 009, 014 (block Phases 2–3). See
 [docs/decisions.md](docs/decisions.md). Phase 1 execution plan: [docs/phase-1-plan.md](docs/phase-1-plan.md).
 

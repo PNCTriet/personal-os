@@ -297,6 +297,8 @@ erDiagram
     }
     API_KEYS {
         uuid id PK
+        enum kind "api_key, oauth_grant"
+        text oauth_client_id
         text prefix
         bytea secret_hash UK
         text_array scopes

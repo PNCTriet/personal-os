@@ -7,8 +7,9 @@ Format: **Status** · **Decision** · Why · Trade-off · **Open question for Fo
 | Date | ADRs | Status |
 |---|---|---|
 | 2026-09-29 | ADR-003, ADR-012, ADR-013, ADR-015, ADR-017 | **Accepted** by Founder (details below) |
+| 2026-09-29 | ADR-017 amended: first client Cursor, then ChatGPT, Claude later (Founder); minimal OAuth pulled into Phase 1.5b (Technical Director) | **Accepted** |
+| 2026-09-29 | ADR-004, 005, 008, 010, 011, 016, 018, 019, 020, 021 | **Accepted** by Technical Director (Ivan), as proposed |
 | — | ADR-001, ADR-002, ADR-006, ADR-007, ADR-009, ADR-014 (★) | *Proposed*, awaiting Founder |
-| — | ADR-004, 005, 008, 010, 011, 016, 018, 019, 020, 021 | *Proposed*, Technical Director to accept (no Founder input needed) |
 
 Phase 1 plan (docs/phase-1-plan.md) assumes the *proposed* option of every pending ADR. ADR-001 must be locked before
 `HOWL-POS-P1-T01` (scaffold), ADR-002 and ADR-006 before `HOWL-POS-P1-T04` (first migration).
@@ -42,12 +43,12 @@ Trade-off: no ad-hoc transactions; logic split between TS and a few SQL function
   new ADR for Kysely over a Supavisor transaction-mode connection. Not before.
 
 ### ADR-004 SQL-first migrations (Supabase CLI), phase-scoped
-**Status:** *Proposed* — Technical Director.
+**Status:** **Accepted** 2026-09-29 (Technical Director), as proposed.
 **Decision:** Hand-written SQL migrations in `supabase/migrations`, generated TS types checked in CI. `0000_proposed_schema.sql` is split per phase after approval.
 Why: DB-level integrity (triggers, RLS, partial indexes) is first-class in SQL. Trade-off: no schema-in-TS DX.
 
 ### ADR-005 API style: snake_case, envelope, cursor pagination
-**Status:** *Proposed* — Technical Director.
+**Status:** **Accepted** 2026-09-29 (Technical Director), as proposed.
 **Decision:** `{data, meta}` / `{error}`; snake_case end-to-end; cursor pagination; `Idempotency-Key` on money/EXECUTE writes; OpenAPI from Zod.
 Why: no mapping layer; stable for external consumers. Trade-off: snake_case in TS code (acceptable; types are generated).
 
@@ -64,7 +65,7 @@ Why: spec §6 deterministic finance. Trade-off: no single "net worth" across cur
 **Q:** Which currencies do you actually hold (VND only? USD/EUR too)? Is per-currency reporting acceptable for v1?
 
 ### ADR-008 Archive vs soft delete
-**Status:** *Proposed* — Technical Director.
+**Status:** **Accepted** 2026-09-29 (Technical Director), as proposed.
 **Decision:** `archived_at` = done/hidden, `deleted_at` = trash (30 days), hard purge only by explicit job; audit never purged.
 Trade-off: every query must filter `deleted_at IS NULL` (repository helper).
 
@@ -75,12 +76,12 @@ Why: DB dump alone is useless; portable (works in local/scratch Postgres and tes
 **Q:** Accept app-level encryption over Supabase Vault?
 
 ### ADR-010 `external_references` is the only core→external link
-**Status:** *Proposed* — Technical Director.
+**Status:** **Accepted** 2026-09-29 (Technical Director), as proposed.
 **Decision:** No `notion_page_id`/`google_event_id` columns; convenience fields computed in API responses.
 Why/Trade-off: see integrations.md §2 (flexibility vs no FK).
 
 ### ADR-011 Audit model
-**Status:** *Proposed* — Technical Director.
+**Status:** **Accepted** 2026-09-29 (Technical Director), as proposed.
 **Decision:** `audit_logs` append-only for all actors; `ai_actions` for every agent invocation + confirmation state; written by the app (not DB triggers) so actor/source/intent are captured.
 Trade-off: an audit write can fail after a successful mutation (logged/alerted; R-07).
 
@@ -160,39 +161,62 @@ Phase 1 (task/project FKs). A receivable is `debts.direction='receivable'`; outs
 Spec §10 table names are not used anywhere in code or API.
 
 ### ADR-016 API key format & hashing
-**Status:** *Proposed* — Technical Director.
+**Status:** **Accepted** 2026-09-29 (Technical Director), as proposed.
 **Decision:** `pk_live_`/`pk_test_` + 32 random bytes (base64url); sha256 stored; default 90-day expiry; rotate with 24 h overlap.
 Why: 256-bit random secrets don't need slow hashes. Trade-off: none material.
 
-### ADR-017 MCP transport, auth and timing ★
-**Status:** **Accepted** 2026-09-29 (Founder). Thin MCP slice right after Phase 1; first AI client **Claude** (tentative).
-**Decision:** Streamable HTTP at `/api/mcp`, stateless, official TS SDK; API-key bearer auth. **Phase 1.5 "MCP slice"**
-(≈ 3–4 days, directly after Phase 1 exit): task tools only — `get_today` (tasks subset), `get_tasks`, `create_task`,
-`update_task`, `complete_task` + `get_action_status` (needed for confirmations). Registry, ai_actions logging and the
-permission path are the real ones (no throwaway code); other Phase 7 tools arrive with their domains.
-First client: Claude. **Claude Code** connects today with `claude mcp add --transport http … --header "Authorization: Bearer pk_live_…"`.
-Claude.ai / Claude Desktop custom connectors expect OAuth 2.1 (DCR/CIMD); static request headers are a beta feature
-whose availability depends on the Claude plan — use it if available, else Claude Code only until Phase 7 adds OAuth.
-ChatGPT connectors need OAuth 2.1 → Phase 7. The Founder can swap the first client without code changes (only auth differs).
-Why: proves the AI-native thesis early and exercises the permission layer while it is small.
-Trade-off: ~1 week of Phase 2 slips; MCP surface must stay stable once Claude depends on it.
-**Consequences:** key scopes for the Claude key: `tasks.read`, `tasks.write`, `projects.read` (no DELETE tools exist).
-`ai_actions.client = 'claude-mcp'`. MCP endpoint is public (Vercel prod), so Firewall rate limits apply from day one.
+### ADR-017 MCP transport, auth, timing and client order ★
+**Status:** **Accepted** 2026-09-29 (Founder); amended the same day: first client **Cursor**, then **ChatGPT**; Claude later.
+OAuth timing (Phase 1.5b) decided by the Technical Director; Founder may veto (then ChatGPT waits for Phase 7).
+**Decision:** One MCP endpoint, `/api/mcp`, in the Next.js app: Streamable HTTP, **stateless** (no `Mcp-Session-Id`,
+POST JSON-RPC per request, works on Vercel serverless), official TS SDK (`@modelcontextprotocol/sdk`, or `mcp-handler`).
+The same endpoint and tool registry serve every client; only the credential differs:
+
+| Client | Phase | Credential | How it connects |
+|---|---|---|---|
+| **Cursor** (first) | 1.5a | `Authorization: Bearer pk_live_…` API key (`api_keys.kind='api_key'`) | `~/.cursor/mcp.json`: `{"url": "https://<prod>/api/mcp", "headers": {"Authorization": "Bearer ${env:PERSONAL_OS_MCP_KEY}"}}` |
+| **ChatGPT** (second) | 1.5b | OAuth 2.1 access token from **Supabase Auth's OAuth 2.1 server** (auth code + PKCE S256, dynamic client registration) | Developer mode → create connector with the URL, auth = OAuth |
+| Claude (later) | 7 | Either of the above (Claude Code: key header; Claude.ai: OAuth) | no server change |
+
+Auth resolver at `/api/mcp` (in order): (1) `Bearer pk_…` → API-key lookup; (2) `Bearer <JWT>` → verify with Supabase
+JWKS: `iss` = `<supabase-url>/auth/v1`, not expired, `client_id` claim present, `sub` = owner, and an **active
+`oauth_grant` row for that `client_id`** (gives scopes, revocation, audit identity; `aud` pinned to the MCP resource via a
+Custom Access Token Hook if the spike confirms it); (3) otherwise `401` + `WWW-Authenticate: Bearer
+resource_metadata="<APP_URL>/.well-known/oauth-protected-resource"` (the metadata endpoint exists only once 1.5b ships).
+Both paths produce the same `RequestContext {actor: ai, id: api_keys.id, source: 'mcp', scopes}`; `authorize()`, confirmations and
+`ai_actions` are unchanged. Also: `Origin` header validated when present (MCP spec, DNS-rebinding), Vercel Firewall limits.
+
+**OAuth timing — pulled into Phase 1.5b (not Phase 7).** Why: ChatGPT is now the second client and it *cannot* use API
+keys (OAuth 2.1 or no auth only); keeping OAuth in Phase 7 would delay it by Phases 2–6 (~10+ weeks). "Minimal OAuth" is
+small because we do **not** build an authorization server: Supabase Auth ships an OAuth 2.1/OIDC server with DCR,
+PKCE and JWKS; we add a consent page, a token verifier, grant rows and one RLS hardening policy (≈ 4.5 d incl. a 0.5 d
+spike). Fallback if the spike fails (e.g. `resource`/`aud` or metadata incompatibility with ChatGPT): a minimal
+self-hosted AS in the app (+3–4 d) — or defer ChatGPT to Phase 7; decided at the spike's go/no-go.
+**Security consequences:** Supabase OAuth tokens are normal `authenticated` JWTs with a `client_id` claim, so without care
+ChatGPT's token could hit the Supabase Data API with full owner RLS rights, bypassing our scopes. Mitigation (in schema
+proposal): a `RESTRICTIVE` policy `no_oauth_client_tokens` on every table (`auth.jwt()->>'client_id' IS NULL`) — OAuth tokens
+only work through `/api/mcp`. Consent is owner-only, scopes chosen at consent from an allow-list (default `tasks.read
+tasks.write projects.read`; sensitive scopes need re-auth), grants revocable in Settings → Connections.
+Why overall: proves the AI-native thesis early and exercises the permission layer while it is small.
+Trade-off: ~2 weeks before Phase 2; MCP surface must stay stable once Cursor/ChatGPT depend on it.
+**Consequences:** `api_keys` becomes the credential table (`kind api_key | oauth_grant`, `oauth_client_id`);
+`ai_actions.client` = `cursor-mcp` / `chatgpt-mcp`. The MCP endpoint is public from day one.
+Estimates and tasks: phase-1-plan.md §8 (1.5a Cursor 3 d, 1.5b ChatGPT 4.5 d).
 
 ### ADR-018 Rate limiting without Redis
-**Status:** *Proposed* — Technical Director.
+**Status:** **Accepted** 2026-09-29 (Technical Director), as proposed.
 **Decision:** Vercel Firewall rules first; Postgres counter function for per-key limits only if needed.
 Trade-off: Firewall rule availability depends on Vercel plan.
 
 ### ADR-019 Timeline is a view
-**Status:** *Proposed* — Technical Director.
+**Status:** **Accepted** 2026-09-29 (Technical Director), as proposed.
 **Decision:** `timeline_events` view over domain tables; no timeline table. Trade-off: view grows as domains are added; materialize only if slow.
 
 ### ADR-020 Testing stack
-**Status:** *Proposed* — Technical Director.
+**Status:** **Accepted** 2026-09-29 (Technical Director), as proposed.
 **Decision:** Vitest (unit: domain/permissions/validation; integration: repositories + route handlers against `supabase start`), SQL smoke/RLS tests in `supabase/tests`, recorded-fixture adapter tests, Playwright only for a login + create-task smoke test.
 
 ### ADR-021 Gmail inbox is not mirrored
-**Status:** *Proposed* — Technical Director.
+**Status:** **Accepted** 2026-09-29 (Technical Director), as proposed.
 **Decision:** Gmail read/search is live via adapter; only OS-originated messages and explicit links are stored.
 Why: privacy, volume, sync cost; spec §2 (Gmail = external communication). Trade-off: no offline full-text search over mail; "emails needing attention" depends on Gmail query quality and API latency.

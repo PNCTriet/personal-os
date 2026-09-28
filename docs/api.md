@@ -77,7 +77,7 @@ response; different body → 409.
 |---|---|---|---|
 | Session | Supabase SSR cookies | `user` | all (owner), confirmations via UI dialog |
 | API key | `Authorization: Bearer pk_live_…` | `api_key` | key's scopes |
-| MCP | via MCP transport (API key / OAuth) | `ai` | key/token scopes ∩ tool's operation |
+| MCP `/api/mcp` | `Bearer pk_live_…` (Cursor, P1.5a) or `Bearer <Supabase OAuth JWT>` (ChatGPT, P1.5b) | `ai` | key / OAuth-grant scopes ∩ tool's operation |
 Every request: authenticate → scope check per operation → ownership (`user_id`) → classification → confirmation rule.
 CSRF: cookie-auth mutations require `Origin` = `APP_URL` (checked in the handler wrapper); API keys are not cookies.
 
@@ -129,6 +129,13 @@ CSRF: cookie-auth mutations require `Origin` = `APP_URL` (checked in the handler
 ### Activity / audit (`audit.read`)
 | GET | `/activity` | `actor_type`, `actor_id`, `source`, `entity_type`, `entity_id`, `since`, `until`, `status`, cursor | `AuditEntry[]` (input redacted). "What did AI do today?" = `/activity?actor_type=ai&since=<today 00:00 local>` |
 
+### Connections (session only, P1.5b)
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/connections` | active `oauth_grant` credentials (client name, scopes, created, last used) |
+| POST | `/connections/:id/revoke` | revokes the grant; the client's tokens are rejected on the next MCP call |
+Non-v1 routes: `GET /.well-known/oauth-protected-resource` (RFC 9728, public), `/oauth/consent` (owner page used by Supabase's OAuth server).
+
 ### API keys (session only — an API key can never manage keys)
 | Method | Path | Body | Response |
 |---|---|---|---|
@@ -137,7 +144,7 @@ CSRF: cookie-auth mutations require `Origin` = `APP_URL` (checked in the handler
 | POST | `/api-keys/:id/rotate` | | 201 new key; old key valid 24 h then revoked |
 | POST | `/api-keys/:id/revoke` | | 200 |
 
-### Approvals (session only; table exists P1, used by API keys from P1 and AI from P1.5 MCP slice)
+### Approvals (session only; table exists P1, used by API keys from P1 and by MCP clients — Cursor, ChatGPT — from P1.5)
 | GET | `/approvals?status=pending_confirmation` | pending `ai_actions` with human summary |
 | POST | `/approvals/:id/confirm` | executes stored args exactly; returns result |
 | POST | `/approvals/:id/reject` | |

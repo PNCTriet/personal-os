@@ -12,7 +12,8 @@ Table set (cuts/merges/additions) **accepted 2026-09-29 (ADR-015)**; data access
 3. `supabase/validation/01_smoke_test.sql` — behavioural asserts as the `authenticated` role: task code assignment and
    move aliasing, code immutability, dependency cycle rejection, done⇔completed_at, balances/transfer/debt outstanding,
    currency guard, romantic⇒sensitive, external-ref cleanup + calendar 1:1, secrets unreadable, audit append-only,
-   derived timeline, auto-approval waiver vs pending confirmation (ADR-012), cross-user RLS isolation (incl. through
+   derived timeline, auto-approval waiver vs pending confirmation (ADR-012), OAuth-client tokens blocked + credential
+   kinds exclusive (ADR-017), cross-user RLS isolation (incl. through
    views), anon denied. **Result: PASSED** (re-run 2026-09-29).
 
 ## Conventions
@@ -57,7 +58,7 @@ and we can add an `origin actor_type` column to tasks/notes later if the UI need
 | Integrations | `integration_accounts` | 2 | unique (user, provider, external_account_id); `refresh_token_expires_at` drives Google re-auth reminders (ADR-013) |
 | Integrations | `integration_secrets` | 2 | service-role only (RLS on, no policies, no grants) |
 | Integrations | `external_references` | 2 | unique link; one OS event per Google event (partial unique) |
-| Platform | `api_keys` | 1 | unique `secret_hash`; `secret_hash` not selectable by `authenticated` (column grants) |
+| Platform | `api_keys` | 1 (keys) / 1.5b (OAuth grants) | credential table: `kind api_key \| oauth_grant`; unique `secret_hash`; one active grant per `oauth_client_id`; `secret_hash` not selectable by `authenticated` (column grants) |
 | Platform | `ai_actions` | 1 (table) / 1.5 (MCP slice) / 7 | pending index; confirmation needs expiry; `auto_approval_rule` records confirmation waivers (ADR-012 small-expense rule), never together with `requires_confirmation` |
 | Platform | `audit_logs` | 1 | bigint identity; append-only trigger; indexes by time, entity, actor |
 | Platform | `idempotency_keys` | 1 | pk (user, key); 24 h expiry; service-role only |
@@ -97,6 +98,8 @@ work_logs, activities (fitness/learning), person↔person relationships, interac
 - `audit_logs`: select + insert only; update/delete blocked by trigger for **every** role incl. service role.
 - `api_keys`: column-level grant excludes `secret_hash`; only `revoked_at` updatable by owner; creation server-side.
 - `integration_secrets`, `idempotency_keys`, `webhook_deliveries`: RLS on, **zero policies**, no grants → service role only.
+- Every table with policies also has RESTRICTIVE `no_oauth_client_tokens` (`auth.jwt()->>'client_id' IS NULL`): tokens
+  minted by Supabase's OAuth 2.1 server for MCP clients (ChatGPT) cannot use the Data API directly (ADR-017).
 - Server path: session requests use the user-JWT client (RLS enforced); API-key/AI/webhook requests use the secret-key
   client and repositories **always** add `.eq('user_id', ctx.userId)` (ADR-003). RLS is defense in depth, not the only check.
 

@@ -21,7 +21,7 @@ attributable. Phase 1 exits when **all** hold:
 | Single-user auth (email OTP, owner allowlist, optional TOTP) | People API/UI, leads, Gmail, Resend (4) |
 | **platform**: profile (`/me`), API keys, audit writer + activity, idempotency, approvals (ai_actions confirmation flow) | Notes, Notion, GitHub (5) |
 | **work**: companies (minimal), projects, tasks, task dependencies | Relationships, memory, timeline UI (6) |
-| `/api/v1` foundation: route wrapper, Zod, envelope, errors, cursor pagination, OpenAPI | MCP server → **Phase 1.5** (ADR-017); Command Center (7) |
+| `/api/v1` foundation: route wrapper, Zod, envelope, errors, cursor pagination, OpenAPI | MCP server → **Phase 1.5a Cursor / 1.5b ChatGPT OAuth** (ADR-017, §8); Command Center (7) |
 | Dashboard v0 + `/projects`, `/tasks`, `/settings/{api-keys,activity}`, `/approvals` | Cron jobs, webhooks, reminders, purge (8) |
 | Observability (pino, Sentry), Vercel deploy, Firewall rate limits | Realtime, file uploads, mobile, multi-user, `/trash` UI beyond tasks |
 
@@ -85,14 +85,15 @@ readable error on missing/invalid vars; no secret in `clientEnv`.
 **T04 Supabase local + Phase 1 migration.** Deliverable: `supabase init`; `config.toml` (sign-ups disabled, email OTP,
 OTP expiry 10 min, site/redirect URLs); `supabase/migrations/<ts>_platform_and_work.sql` = the Phase 1 subset of the
 proposal (tables in §2, enums they use, triggers: updated_at, task code, code immutability, dependency cycle, audit
-append-only; RLS + grants; `private` schema); `seed.sql` (dev only: sample projects/tasks for a local owner).
+append-only; RLS + grants incl. the RESTRICTIVE `no_oauth_client_tokens` policy; `api_keys.kind` column (only `api_key`
+used until 1.5b); `private` schema); `seed.sql` (dev only: sample projects/tasks for a local owner).
 Accept: `supabase db reset` applies cleanly from zero; no Phase 2+ objects present; schema diff vs proposal limited to the
 Phase 1 subset.
 
 **T05 DB/RLS tests + CI migration job.** Deliverable: pgTAP tests in `supabase/tests` porting the Phase 1 parts of
 `supabase/validation/01_smoke_test.sql` (code assignment/move aliasing, immutability, cycle rejection,
 done⇔completed_at, `api_keys.secret_hash` unreadable, audit append-only, **second user sees 0 rows on every Phase 1
-table and cannot insert with a foreign `user_id`**, `anon` denied). CI job: `supabase start` → `db reset` → `supabase test db`
+table and cannot insert with a foreign `user_id`**, a JWT with a `client_id` claim sees nothing, `anon` denied). CI job: `supabase start` → `db reset` → `supabase test db`
 → `supabase db lint` → guard that files already on `main` under `supabase/migrations` are unchanged (append-only migrations).
 Accept: job green; each RLS test fails if its policy is dropped (verified once locally).
 
@@ -221,8 +222,9 @@ Secrets per environment (Vercel: Production = prod, Preview = staging; local `.e
 GitHub Actions secrets: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF_STAGING`, `SUPABASE_PROJECT_REF_PROD`,
 `SUPABASE_DB_PASSWORD_STAGING`, `SUPABASE_DB_PASSWORD_PROD`. Nothing Google/Notion/GitHub-token/AI is needed in Phase 1.
 
-For Phase 1.5 (not in the total): which Claude surface (Claude Code, or Claude.ai/Desktop and plan — static-header
-connectors are a plan-dependent beta).
+For Phase 1.5 (not in the total): **Cursor** installed (1.5a); a **ChatGPT** plan with developer mode — Plus, Pro,
+Business, Enterprise or Edu, web — (1.5b); OK to enable Supabase Auth's OAuth 2.1 server + dynamic client registration
+on staging/prod (dashboard toggle, done by Ivan if he has project access).
 
 ## 7. Security checklist (T22)
 Sign-ups disabled; non-owner rejected server-side; MFA enrolled (recommended) · secret key imported only in `admin.ts`
@@ -230,7 +232,27 @@ Sign-ups disabled; non-owner rejected server-side; MFA enrolled (recommended) ·
 `pk_test_` · confirmation flow: key cannot confirm, stored args executed once · audit append-only, no secrets in rows or
 logs · `Origin` check on cookie mutations · Firewall rate limits active · no `NEXT_PUBLIC_` secret · backups verified.
 
-## 8. Next: Phase 1.5 MCP slice (ADR-017, 3–4 d)
-`/api/mcp` (Streamable HTTP, stateless, official TS SDK) with API-key bearer auth; tool registry with `get_today`
-(tasks), `get_tasks`, `create_task`, `update_task`, `complete_task`, `get_action_status`; `ai_actions` row per call
-(`client='claude-mcp'`); Claude Code connected with a `claude-mcp` key (`tasks.read tasks.write projects.read`).
+## 8. Next: Phase 1.5 MCP slice (ADR-017) — Cursor, then ChatGPT
+Not in the Phase 1 total. One endpoint `/api/mcp` (Streamable HTTP, stateless, official TS SDK) and one tool registry
+serve both clients; only the credential differs (ai-tools.md §8). Tools: `get_today` (tasks), `get_tasks`,
+`create_task`, `update_task`, `complete_task`, `get_action_status`.
+
+**1.5a — Cursor (API key) · 3 d**
+| ID | Title | Est (d) | Dep | Acceptance |
+|---|---|---|---|---|
+| HOWL-POS-P1.5-T01 | MCP endpoint + API-key auth | 1 | Phase 1 | `initialize`/`tools/list`/`tools/call` over stateless POST; missing/invalid key → 401 with `WWW-Authenticate: Bearer`; `Origin` checked; Firewall rule on `/api/mcp` |
+| HOWL-POS-P1.5-T02 | Tool registry + 6 task tools + ai_actions | 1.5 | T01 | every call → one `ai_actions` row (`client='cursor-mcp'`); writes audited; scope denial → tool error + audit `denied`; lint: `src/ai` imports services only |
+| HOWL-POS-P1.5-T03 | Cursor hookup + e2e | 0.5 | T02 | `~/.cursor/mcp.json` with `${env:PERSONAL_OS_MCP_KEY}` documented; SDK-client e2e test in CI; Founder completes a task from Cursor on prod |
+
+**1.5b — ChatGPT (minimal OAuth 2.1 via Supabase Auth) · 4.5 d** — pulled forward from Phase 7 because ChatGPT is
+the second client and accepts only OAuth; Supabase provides the authorization server, so we build only the edges.
+| ID | Title | Est (d) | Dep | Acceptance |
+|---|---|---|---|---|
+| HOWL-POS-P1.5-T04 | Spike + go/no-go | 0.5 | T03 | on staging: OAuth server + DCR enabled; AS metadata has `S256` + `registration_endpoint`; token has `client_id`; `aud` settable via Custom Access Token Hook (or documented fallback); ChatGPT dev-mode connector completes linking against a stub. No-go → fallback decision (self-hosted AS +3–4 d, or ChatGPT to Phase 7) |
+| HOWL-POS-P1.5-T05 | Protected-resource metadata + auth challenges | 0.5 | T04 | `/.well-known/oauth-protected-resource` (+ `/api/mcp` path variant) lists the Supabase issuer; 401 carries `resource_metadata`; tools declare `securitySchemes`; auth errors carry `_meta["mcp/www_authenticate"]` |
+| HOWL-POS-P1.5-T06 | Consent page + OAuth grants | 1 | T05 | `/oauth/consent`: owner login required, shows client, scope allow-list (default `tasks.read tasks.write projects.read`), approve → `api_keys(kind=oauth_grant)` + audit; deny works; non-owner cannot consent |
+| HOWL-POS-P1.5-T07 | JWT verifier in the MCP auth resolver | 1 | T06 | JWKS signature, `iss` = `MCP_OAUTH_ISSUER`, `exp`, `client_id` → active grant, `sub` = owner (+ `aud` if hook); revoked/unknown grant → 401; session cookies and plain Supabase session JWTs rejected at `/api/mcp`; unit tests per failure |
+| HOWL-POS-P1.5-T08 | Connections UI + hardening | 0.5 | T07 | Settings → Connections list/revoke; pgTAP proves an OAuth token reads/writes nothing via the Data API; Cursor with key still connects (no OAuth prompt) |
+| HOWL-POS-P1.5-T09 | ChatGPT e2e on prod + docs | 1 | T08 | Founder links ChatGPT, lists/creates/completes a task; `ai_actions.client='chatgpt-mcp'`; a DELETE-less tool set; security checklist for the public endpoint signed off |
+
+Total Phase 1.5: **7.5 d + 15 % ≈ 8.5 d (~2 weeks)**; worst case with fallback AS ≈ 12 d.

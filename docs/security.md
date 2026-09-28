@@ -10,7 +10,7 @@ never in the browser or logs.
 |---|---|---|---|
 | `user` (Founder, web) | Supabase Auth session (email OTP/magic link, `OWNER_EMAIL` allowlist, sign-ups disabled) + optional TOTP MFA (recommended) | all | yes |
 | `api_key` (scripts, Ivan's tools) | `Bearer pk_live_…` | key scopes | no → 202 pending |
-| `ai` (MCP client, Command Center) | API key / OAuth token bound to MCP | token scopes ∩ tool | no → 202 pending |
+| `ai` (MCP client: Cursor, ChatGPT; Command Center) | API key (Cursor) / Supabase OAuth 2.1 token mapped to an `oauth_grant` (ChatGPT), only at `/api/mcp` | key/grant scopes ∩ tool | no → 202 pending |
 | `integration` / `system` | webhook signature / cron secret | fixed internal operations | n/a |
 
 "Ivan" as a separate human user is out of scope for v1 (single owner). Ivan's automation uses an API key named e.g. `ivan-cli`; audit
@@ -135,6 +135,13 @@ for all roles. Session requests use the user-JWT Supabase client (RLS enforced).
 client inside repositories that always filter by `ctx.userId` — enforced by a repository base helper and an
 integration test that runs every repository against a second user and expects zero rows. The secret key is imported
 in exactly one file (`src/lib/supabase/admin.ts`, `server-only`).
+
+### MCP OAuth tokens (ADR-017, Phase 1.5b)
+Issued by Supabase Auth's OAuth 2.1 server after owner consent at `/oauth/consent`. Accepted **only** by `/api/mcp`:
+signature via Supabase JWKS, `iss` = `MCP_OAUTH_ISSUER`, `exp`, `client_id` → active `api_keys(kind=oauth_grant)`,
+`sub` = owner. A RESTRICTIVE RLS policy (`no_oauth_client_tokens`) makes such tokens useless against the Supabase Data
+API, and session-only routes (`/api/v1/*` cookie auth, approvals, keys) never accept them. Revoking the grant cuts the
+client off at the next call. Consent scopes: allow-list; sensitive scopes need re-auth ≤ 5 min.
 
 ## 8. Integration token storage
 - OAuth access/refresh tokens → `integration_secrets`, encrypted with AES-256-GCM in the app (`TOKEN_ENCRYPTION_KEY`,

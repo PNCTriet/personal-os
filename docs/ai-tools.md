@@ -7,7 +7,7 @@ be replaced without touching domain code.
 ## 1. Flow
 ```mermaid
 flowchart LR
-    C["Claude / ChatGPT / agent<br/>(MCP client)"] -->|"MCP Streamable HTTP<br/>Bearer token"| M["/api/mcp"]
+    C["Cursor / ChatGPT / later Claude<br/>(MCP client)"] -->|"MCP Streamable HTTP<br/>Bearer: API key or OAuth token"| M["/api/mcp"]
     CC["AI Command Center<br/>(/api/v1/ai/command)"] --> R
     M --> R["Tool registry<br/>src/ai/registry.ts"]
     R -->|"zod parse args"| X["Tool executor<br/>ctx(actor=ai, scopes)"]
@@ -63,7 +63,8 @@ export const completeTask = defineTool({
 | `remember` / `correct_memory` | `memory.create/correct` | WRITE | – | | 6 |
 
 MCP exposes the spec §18 list (✔) plus `get_action_status` and `update_task`; others are Command-Center-only until needed.
-**Phase 1.5 MCP slice (ADR-017, accepted 2026-09-29):** only the rows marked 1.5 — task tools + `get_action_status`.
+**Phase 1.5 MCP slice (ADR-017, accepted 2026-09-29):** only the rows marked 1.5 — task tools + `get_action_status` —
+served to Cursor (1.5a) and ChatGPT (1.5b) from the same endpoint.
 No `run_sql`, `http_request`, `delete_*` tools in v1. Deletion stays a UI action.
 
 ## 4. Permissions (no separate AI security model)
@@ -73,7 +74,7 @@ No `run_sql`, `http_request`, `delete_*` tools in v1. Deletion stays a UI action
 - Classification: tool outputs pass through the same repository filter; SENSITIVE rows appear only if the token holds `sensitive.read` **and** the tool is sensitive-aware.
 
 ## 5. ai_actions + audit_logs
-- Every tool invocation (including reads) → one `ai_actions` row: tool, operation, category, status, redacted input, `input_hash`, result summary, entity, request id, client (`claude-mcp`, `chatgpt-mcp`, …).
+- Every tool invocation (including reads) → one `ai_actions` row: tool, operation, category, status, redacted input, `input_hash`, result summary, entity, request id, client (`cursor-mcp`, `chatgpt-mcp`, later `claude-mcp`, …).
 - Confirmation waived by an explicit rule (only ADR-012's small VND expense today) → `requires_confirmation=false`,
   `auto_approval_rule` set, status goes straight to `executing → succeeded`; listed as "auto-recorded" with Undo.
 - Writes/executes/denials also → `audit_logs` with `ai_action_id` (security.md §9). Sensitive reads → audit too.
@@ -99,12 +100,32 @@ the model is instructed (tool description) to tell the owner to approve in Perso
   maps args → service call exactly and that confirmation/denial paths hold, with no LLM in the loop (spec §32).
 
 ## 8. MCP server
-- **Timing (ADR-017):** thin slice in Phase 1.5 (right after Phase 1): `/api/mcp` + the 1.5 tools above, real registry,
-  real `ai_actions`. **First client: Claude** (tentative): Claude Code via `claude mcp add --transport http personal-os
-  https://<prod>/api/mcp --header "Authorization: Bearer pk_live_…"`; Claude.ai/Desktop custom connectors need OAuth 2.1
-  or the (plan-dependent, beta) static request header — used if available, else OAuth lands in Phase 7 with ChatGPT.
-  Suggested key: name `claude-mcp`, scopes `tasks.read tasks.write projects.read`, 90-day expiry.
-- Transport: MCP Streamable HTTP at `/api/mcp` (stateless mode; works on Vercel serverless), using the official TypeScript SDK (`@modelcontextprotocol/sdk`) or Vercel's `mcp-handler` adapter.
-- Auth v1: `Authorization: Bearer pk_live_…` (works for Claude Code/Cursor-style clients and scripts).
-- Auth for ChatGPT and Claude.ai/Desktop connectors: MCP spec's OAuth 2.1 authorization (protected-resource metadata + authorization server). Options: Supabase Auth's OAuth 2.1 server capability (verify maturity at Phase 7) or a minimal self-hosted authorization server issuing tokens that map to an API-key-like scope set. Decide at Phase 7 (ADR-017); the permission layer does not change.
+- **Timing & client order (ADR-017, amended 2026-09-29):** Phase 1.5a **Cursor** (API key), Phase 1.5b **ChatGPT**
+  (OAuth 2.1), Claude later (Phase 7; no server change needed). Same endpoint, registry and `ai_actions` for all.
+- Transport: MCP Streamable HTTP at `/api/mcp`, **stateless** (no `Mcp-Session-Id`; each POST is a self-contained
+  JSON-RPC exchange; works on Vercel serverless), official TypeScript SDK (`@modelcontextprotocol/sdk`) or Vercel's
+  `mcp-handler`. `Origin` validated when present; Vercel Firewall rate limits.
+- Auth resolver (one route, two credentials):
+  ```
+  Bearer pk_…        → api_keys(kind=api_key) lookup                               → ctx(actor=ai, id=key.id, client=cursor-mcp)
+  Bearer <JWT>       → Supabase JWKS verify: iss, exp, client_id present, sub=owner,
+                       (aud=MCP resource if token hook set) → api_keys(kind=oauth_grant, oauth_client_id) → ctx(…, client=chatgpt-mcp)
+  missing/invalid    → 401 WWW-Authenticate: Bearer resource_metadata="<APP_URL>/.well-known/oauth-protected-resource"
+  ```
+- **Cursor (1.5a):** `~/.cursor/mcp.json` → `{"mcpServers": {"personal-os": {"url": "https://<prod>/api/mcp",
+  "headers": {"Authorization": "Bearer ${env:PERSONAL_OS_MCP_KEY}"}}}}` (key in the Founder's shell env, never in a repo).
+  Key: name `cursor-mcp`, scopes `tasks.read tasks.write projects.read`, 90-day expiry. Cursor also supports OAuth (DCR),
+  so after 1.5b it can drop the static key if preferred.
+- **ChatGPT (1.5b):** developer mode (web; Plus/Pro/Business/Enterprise/Edu) → create connector with the MCP URL, auth
+  OAuth. ChatGPT requires a public HTTPS Streamable HTTP endpoint and OAuth 2.1 per the MCP authorization spec: protected
+  resource metadata (RFC 9728), authorization-server metadata with `code_challenge_methods_supported: ["S256"]`, client
+  identification via CIMD (preferred) or DCR, `resource` parameter echoed into the token audience; it cannot send
+  custom API keys. Authorization server = **Supabase Auth OAuth 2.1 server** (DCR on, authorization path
+  `/oauth/consent` in our app). Our pieces: `/.well-known/oauth-protected-resource` (+ `/api/mcp` path variant),
+  consent page (owner login → pick scopes from allow-list → approve creates `api_keys(kind=oauth_grant)`), JWT verifier,
+  per-tool `securitySchemes: [{type:"oauth2", scopes:[…]}]` and `_meta["mcp/www_authenticate"]` on auth errors so
+  ChatGPT shows its linking UI.
+- **OAuth tokens never touch the Data API:** RESTRICTIVE RLS policy `no_oauth_client_tokens` on every table
+  (`auth.jwt()->>'client_id' IS NULL`), so a ChatGPT token only works through `/api/mcp`, where scopes apply.
+- ChatGPT's own "confirm this action?" prompt is UX only; server-side confirmation (security.md §4) still applies.
 - Provider independence: nothing in `src/ai` depends on OpenAI types; Command Center LLM behind `LlmProvider` interface (`AI_PROVIDER`).
