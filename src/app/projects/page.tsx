@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import { FolderKanban } from "lucide-react";
 import { requireScope } from "@/lib/session";
-import { listProjectsWithStats } from "@/modules/projects";
+import { listProjectsWithStats, PROJECT_STATUS_LABEL } from "@/modules/projects";
 import { listCompanies } from "@/modules/companies";
-import { Reveal } from "@/components/reveal";
-import { SubNav } from "@/components/sub-nav";
-import { ProjectCard } from "@/components/project-card";
+import { DataTable, type Row } from "@/components/ui/data-table";
+import { EmptyState, PageHeader, Panel } from "@/components/ui/page";
 import { NewProject } from "@/components/new-project";
 
 export const metadata: Metadata = { title: "Projects" };
@@ -13,47 +13,40 @@ export const dynamic = "force-dynamic";
 export default async function ProjectsPage() {
   const scope = await requireScope();
   const [projects, companies] = await Promise.all([listProjectsWithStats(scope), listCompanies(scope)]);
-  const companyName = new Map(companies.map((c) => [c.id, c.name]));
-  const visible = projects.filter((p) => !p.archived_at);
+  const company = new Map(companies.map((c) => [c.id, c.name]));
   const rank = { active: 0, planned: 1, on_hold: 2, completed: 3, cancelled: 4 } as const;
-  visible.sort((a, b) => rank[a.status] - rank[b.status] || a.code.localeCompare(b.code));
-  const active = visible.filter((p) => p.status === "active").length;
-
+  const rows: Row[] = projects.filter((p) => !p.archived_at).map((p) => ({
+    id: p.id, href: `/projects/${p.code}`, name: p.name, code: p.code, company: p.company_id ? company.get(p.company_id) ?? null : null,
+    status: p.status, statusRank: rank[p.status], progress: p.stats.progress, open: p.stats.open, overdue: p.stats.overdue || null,
+    target: p.target_date,
+  }));
   return (
     <>
-      <SubNav title="Projects" cta={<a href="#new" className="btn btn-primary btn-sm">New project</a>} />
-      <section className="tile tile-hero" style={{ paddingBottom: 56 }}>
-        <div className="container">
-          <Reveal>
-            <h1 className="t-hero" style={{ margin: 0 }}>Projects.</h1>
-            <p className="t-lead" style={{ margin: "16px 0 0", color: "var(--text-secondary)" }}>
-              {visible.length} projects, {active} active. Every task gets a code you can say out loud.
-            </p>
-          </Reveal>
-        </div>
-      </section>
-      <section className="tile tile-parchment" style={{ paddingTop: 56 }}>
-        <div className="container">
-          <div className="grid md:grid-cols-2 lg:grid-cols-3" style={{ gap: 20 }}>
-            {visible.map((p, i) => (
-              <Reveal key={p.id} delay={(i % 3) * 80}>
-                <ProjectCard project={p} stats={p.stats} company={p.company_id ? companyName.get(p.company_id) : undefined} />
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-      <section className="tile" id="new" style={{ scrollMarginTop: 52 }}>
-        <div className="container" style={{ maxWidth: 820 }}>
-          <Reveal>
-            <h2 className="t-display-md" style={{ margin: "0 0 8px" }}>New project.</h2>
-            <p className="t-caption" style={{ color: "var(--text-muted)", margin: "0 0 24px" }}>
-              Codes follow ADR-006: <span className="tabular">COMPANY-PROJECT-NN</span>, uppercase, and never change.
-            </p>
-            <NewProject />
-          </Reveal>
-        </div>
-      </section>
+      <PageHeader title="Projects" subtitle={`${rows.length} projects · ${projects.filter((p) => p.status === "active").length} active`}
+        actions={<a href="#new" className="btn btn-primary">New project</a>} />
+      <div className="panel" style={{ marginBottom: 12 }}>
+        <DataTable
+          rows={rows}
+          noun="project"
+          searchKeys={["name", "code", "company"]}
+          facets={[{ key: "status", label: "Status", labels: PROJECT_STATUS_LABEL }, { key: "company", label: "Company" }]}
+          defaultSort={{ key: "status", dir: "asc" }}
+          columns={[
+            { key: "name", label: "Project", kind: "strong" },
+            { key: "code", label: "Code", kind: "mono", width: 130 },
+            { key: "company", label: "Company", width: 160 },
+            { key: "status", label: "Status", kind: "pill", sortKey: "statusRank", labels: PROJECT_STATUS_LABEL, tones: { active: "blue", planned: "gray", on_hold: "orange", completed: "green", cancelled: "none" }, width: 120 },
+            { key: "progress", label: "Progress", kind: "progress", width: 180 },
+            { key: "open", label: "Open", kind: "number", align: "right", width: 70 },
+            { key: "overdue", label: "Overdue", kind: "number", align: "right", width: 80 },
+            { key: "target", label: "Target", kind: "date", width: 90 },
+          ]}
+          empty={<EmptyState icon={FolderKanban} title="No projects" body="Create your first project below." />}
+        />
+      </div>
+      <Panel title="New project" style={{ maxWidth: 760 }}>
+        <div id="new" style={{ scrollMarginTop: 64 }}><NewProject /></div>
+      </Panel>
     </>
   );
 }

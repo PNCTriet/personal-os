@@ -1,121 +1,74 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
 import { requireScope } from "@/lib/session";
 import { AppError } from "@/lib/errors";
 import { shortDate } from "@/lib/dates";
 import { getProject, statsFor, PROJECT_STATUS_LABEL } from "@/modules/projects";
-import { compareTasks, isOpen, listTasks } from "@/modules/tasks";
+import { listTasks } from "@/modules/tasks";
 import { listActivity } from "@/modules/activity";
-import { Reveal } from "@/components/reveal";
-import { SubNav } from "@/components/sub-nav";
-import { TaskList } from "@/components/task-row";
-import { QuickAdd } from "@/components/quick-add";
 import { ActivityList } from "@/components/activity-list";
 import { loadLookups } from "@/components/lookups";
+import { toTaskItems } from "@/components/task-items";
+import { TasksView } from "@/components/tasks-view";
+import { QuickAdd } from "@/components/quick-add";
+import { PageHeader, Panel, Pill, Progress } from "@/components/ui/page";
 
 export const dynamic = "force-dynamic";
-
-type Props = { params: Promise<{ code: string }> };
+type Props = { params: Promise<{ code: string }>; searchParams: Promise<{ layout?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: decodeURIComponent((await params).code).toUpperCase() };
 }
 
-export default async function ProjectPage({ params }: Props) {
-  const { code } = await params;
+const TONE = { active: "blue", planned: "gray", on_hold: "orange", completed: "green", cancelled: "none" } as const;
+
+export default async function ProjectPage({ params, searchParams }: Props) {
+  const [{ code }, sp] = await Promise.all([params, searchParams]);
   const scope = await requireScope();
   const project = await getProject(scope, decodeURIComponent(code)).catch((e: unknown) => {
     if (e instanceof AppError && e.code === "not_found") notFound();
     throw e;
   });
   const [tasks, { lk, pickers, companies }] = await Promise.all([listTasks(scope, { project_id: project.id }), loadLookups(scope)]);
-  const taskIds = tasks.map((t) => t.id);
-  const activity = await listActivity(scope, { limit: 8, entityIds: [project.id, ...taskIds] });
+  const activity = await listActivity(scope, { limit: 10, entityIds: [project.id, ...tasks.map((t) => t.id)] });
   const stats = statsFor(tasks, lk.today);
   const company = companies.find((c) => c.id === project.company_id);
-  const open = tasks.filter(isOpen).sort(compareTasks);
-  const inProgress = open.filter((t) => t.status === "in_progress");
-  const rest = open.filter((t) => t.status !== "in_progress");
-  const done = tasks.filter((t) => !isOpen(t)).sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""));
-  const pct = Math.round(stats.progress * 100);
 
   return (
     <>
-      <SubNav
+      <Link href="/projects" className="t-small muted" style={{ display: "inline-flex", alignItems: "center", gap: 2, marginBottom: 6 }}><ChevronLeft size={14} />Projects</Link>
+      <PageHeader
         title={project.name}
-        links={[{ href: "/projects", label: "All projects" }, { href: "#tasks", label: "Tasks" }, { href: "#activity", label: "Activity" }]}
-        cta={<a href="#add" className="btn btn-primary btn-sm">Add task</a>}
+        subtitle={<span style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><span className="tabular">{project.code}</span><Pill tone={TONE[project.status]}>{PROJECT_STATUS_LABEL[project.status]}</Pill>{company && <span>{company.name}</span>}</span>}
       />
-      <section className="tile tile-hero" style={{ paddingBottom: 64 }}>
-        <div className="container" style={{ maxWidth: 820 }}>
-          <Reveal>
-            <p className="t-caption-strong tabular" style={{ color: "var(--text-muted)", margin: "0 0 8px" }}>
-              {project.code} · {PROJECT_STATUS_LABEL[project.status]}{company ? ` · ${company.name}` : ""}
-            </p>
-            <h1 className="t-hero" style={{ margin: 0 }}>{project.name}.</h1>
-            {project.description && <p className="t-lead" style={{ margin: "16px 0 0", color: "var(--text-secondary)" }}>{project.description}</p>}
-          </Reveal>
-          <Reveal delay={100}>
-            <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 20, marginTop: 48 }}>
+      <div className="grid-dash">
+        <div className="span-8" style={{ display: "grid", gap: 12, alignContent: "start", minWidth: 0 }}>
+          <div className="panel" style={{ padding: 12 }}>
+            <QuickAdd id="project-add" projects={pickers.projects} companies={pickers.companies} fixedProjectId={project.id} compact />
+          </div>
+          <TasksView items={toTaskItems(tasks, lk)} showProject={false} initialLayout={sp.layout === "board" ? "board" : "table"} />
+        </div>
+        <div className="span-4" style={{ display: "grid", gap: 12, alignContent: "start" }}>
+          <Panel title="Overview">
+            {project.description && <p className="text-2" style={{ margin: "0 0 12px" }}>{project.description}</p>}
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span className="muted">Progress</span><span className="tabular" style={{ fontWeight: 600 }}>{Math.round(stats.progress * 100)}%</span>
+            </div>
+            <Progress value={stats.progress} label="Progress" />
+            <dl style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px", margin: "14px 0 0" }}>
               {[
-                { n: `${pct}%`, label: "Complete" },
-                { n: stats.open, label: "Open" },
-                { n: stats.in_progress, label: "In progress" },
-                { n: stats.overdue, label: "Overdue" },
-              ].map((s) => (
-                <div key={s.label}>
-                  <div className="t-display-lg tabular">{s.n}</div>
-                  <div className="t-caption" style={{ color: "var(--text-muted)" }}>{s.label}</div>
-                </div>
+                ["Open", stats.open], ["In progress", stats.in_progress], ["Done", stats.done], ["Overdue", stats.overdue],
+                ["Start", project.start_date ? shortDate(project.start_date) : "—"], ["Target", project.target_date ? shortDate(project.target_date) : "—"],
+              ].map(([k, v]) => (
+                <div key={String(k)}><dt className="t-small muted">{k}</dt><dd className={`tabular ${k === "Overdue" && Number(v) > 0 ? "tone-red" : ""}`} style={{ margin: 0, fontWeight: 600 }}>{v}</dd></div>
               ))}
-            </div>
-            <div className="progress" style={{ marginTop: 24 }} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Progress">
-              <span style={{ transform: `scaleX(${stats.progress})` }} />
-            </div>
-            <p className="t-caption tabular" style={{ color: "var(--text-muted)", margin: "8px 0 0", display: "flex", justifyContent: "space-between" }}>
-              <span>{project.start_date ? `Started ${shortDate(project.start_date)}` : ""}</span>
-              <span>{project.target_date ? `Target ${shortDate(project.target_date)}` : ""}</span>
-            </p>
-          </Reveal>
+            </dl>
+          </Panel>
+          <Panel title="Activity" flush><ActivityList items={activity} empty="No activity on this project yet." /></Panel>
         </div>
-      </section>
-
-      <section id="tasks" className="tile tile-parchment" style={{ scrollMarginTop: 52 }}>
-        <div className="container" style={{ maxWidth: 820 }}>
-          <Reveal className="card" id="add">
-            <QuickAdd id="project-add" projects={pickers.projects} companies={pickers.companies} fixedProjectId={project.id} />
-          </Reveal>
-          {inProgress.length > 0 && (
-            <Reveal>
-              <h2 className="t-tagline" style={{ margin: "40px 0 16px" }}>In progress</h2>
-              <TaskList tasks={inProgress} lk={lk} showProject={false} empty="" />
-            </Reveal>
-          )}
-          <Reveal>
-            <h2 className="t-tagline" style={{ margin: "40px 0 16px" }}>Up next <span className="tabular" style={{ color: "var(--text-muted)", fontWeight: 400 }}>{rest.length}</span></h2>
-            <TaskList tasks={rest} lk={lk} showProject={false} empty="Nothing queued. Add the next step above." />
-          </Reveal>
-          {done.length > 0 && (
-            <Reveal>
-              <details style={{ marginTop: 40 }}>
-                <summary className="t-tagline" style={{ cursor: "pointer", marginBottom: 16 }}>
-                  Completed <span className="tabular" style={{ color: "var(--text-muted)", fontWeight: 400 }}>{done.length}</span>
-                </summary>
-                <TaskList tasks={done} lk={lk} showProject={false} empty="" />
-              </details>
-            </Reveal>
-          )}
-        </div>
-      </section>
-
-      <section id="activity" className="tile" style={{ scrollMarginTop: 52 }}>
-        <div className="container" style={{ maxWidth: 820 }}>
-          <Reveal><h2 className="t-display-md" style={{ margin: "0 0 24px" }}>Activity.</h2></Reveal>
-          <Reveal delay={80}><ActivityList items={activity} empty="No activity on this project yet." /></Reveal>
-          <p style={{ marginTop: 32 }}><Link href="/projects" className="link link-chevron">All projects</Link></p>
-        </div>
-      </section>
+      </div>
     </>
   );
 }

@@ -1,12 +1,11 @@
 import Link from "next/link";
+import { Compass } from "lucide-react";
+import { EmptyState } from "@/components/ui/page";
 
 export default function NotFound() {
   return (
-    <section className="tile tile-hero">
-      <div className="container" style={{ textAlign: "center" }}>
-        <h1 className="t-display-lg" style={{ margin: 0 }}>This page isn’t here.</h1>
-        <p style={{ marginTop: 24 }}><Link href="/" className="btn btn-secondary">Back to overview</Link></p>
-      </div>
-    </section>
+    <div className="panel" style={{ marginTop: 24 }}>
+      <EmptyState icon={Compass} title="This page isn’t here" action={<Link href="/" className="btn btn-plain">Back to Dashboard</Link>} />
+    </div>
   );
 }

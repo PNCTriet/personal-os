@@ -8,22 +8,19 @@ export function NewProject() {
   const form = useRef<HTMLFormElement>(null);
   useEffect(() => { if (state.ok && state.nonce) form.current?.reset(); }, [state]);
   return (
-    <form ref={form} action={action} className="card" style={{ display: "grid", gap: 12 }}>
-      <div className="grid sm:grid-cols-[200px_1fr]" style={{ gap: 12 }}>
+    <form ref={form} action={action} style={{ display: "grid", gap: 8 }}>
+      <div className="grid sm:grid-cols-[170px_1fr]" style={{ gap: 8 }}>
         <input name="code" className="field tabular" placeholder="HOWL-APP-01" aria-label="Project code" required maxLength={32} style={{ textTransform: "uppercase" }} />
         <input name="name" className="field" placeholder="Project name" aria-label="Project name" required maxLength={200} />
       </div>
-      <input name="description" className="field" placeholder="One line on what done looks like (optional)" aria-label="Description" maxLength={5000} />
-      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-        <label className="t-caption" style={{ color: "var(--text-muted)", display: "flex", gap: 8, alignItems: "center" }}>
-          Target <input type="date" name="target_date" className="chip" />
-        </label>
+      <input name="description" className="field" placeholder="What does done look like? (optional)" aria-label="Description" maxLength={5000} />
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <label className="t-small muted" style={{ display: "flex", gap: 6, alignItems: "center" }}>Target <input type="date" name="target_date" className="select" style={{ paddingRight: 8 }} /></label>
+        <span className="t-small muted">Codes follow ADR-006 (COMPANY-PROJECT-NN) and never change.</span>
         <span style={{ flex: 1 }} />
+        <span role="status" aria-live="polite" className="t-small" style={{ color: state.ok ? "var(--muted)" : "var(--red)" }}>{state.ok ? (state.nonce ? "Project created" : "") : state.message}</span>
         <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Creating…" : "Create project"}</button>
       </div>
-      <p role="status" aria-live="polite" className="t-caption" style={{ margin: 0, minHeight: 20, color: state.ok ? "var(--text-muted)" : "var(--text)" }}>
-        {state.ok ? (state.nonce ? "Project created." : "") : state.message}
-      </p>
     </form>
   );
 }

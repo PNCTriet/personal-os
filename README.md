@@ -46,8 +46,17 @@ repository interfaces (`src/modules/*/repository.ts`); they're chosen in `src/li
 - `/api/v1/projects` and `/api/v1/tasks`: list/create, get/patch/delete by id **or** code, Zod validation,
   `{ data, meta }` / `{ error: { code, message, details, request_id } }` envelopes, cursor pagination on tasks.
   `/api/v1/health` reports the mode.
-- Pages: Overview (greeting, today's focus, counts, projects, recent activity), Today, Tasks (quick add, view chips,
-  inline status), Projects and project detail. Light and dark mode, fade-and-rise motion that respects `prefers-reduced-motion`.
+- **App shell (v0.2, "CRM shell")**: collapsible left sidebar grouped by the spec's domains (drawer on mobile), top bar with
+  ⌘K command palette (cmdk), quick-add, Demo badge and theme toggle. macOS-style app UI on DESIGN.md tokens: compact 13px
+  type, hairline tables, rounded panels, 150–250 ms transitions, light and dark.
+- **Dashboard** command center: 8 KPI tiles (tasks, overdue, due today, spend vs budget, cash, receivables, follow-ups,
+  reconnect), today's agenda, project progress, AI approvals, recent transactions, reconnect list, activity feed.
+- **Work (fully functional)**: Tasks table (filters, sorting, inline status chips) with a kanban board toggle
+  (drag and drop between statuses), Today, Projects table and project detail.
+- **Read-only previews** for Calendar, Finance (transactions, accounts, budgets, debts, VND), People, Companies,
+  Inbox, Campaigns, Notes, Documents, Goals, Habits, Memory, Integrations, API keys, built from demo seed data in
+  `src/modules/preview` with one shared `DataTable`. In Supabase mode they show "Connected in Phase N" empty states.
+  The Audit log page is real (backed by `audit_logs`).
 - Migration `supabase/migrations/20260929000000_mvp_v0_work.sql`: profiles, companies, projects, tasks, audit_logs; RLS on
   every table, immutable project codes, task-code trigger, append-only audit log. Validated in CI against Postgres 17.
 - CI workflow (typecheck, lint, build, migration + RLS smoke test) in `ci/github-actions-ci.yml`. It's parked there
