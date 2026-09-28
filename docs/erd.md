@@ -1,6 +1,6 @@
 # ERD — Personal OS (proposed)
 
-Source of truth for columns/constraints: `supabase/migrations/0000_proposed_schema.sql`. This diagram shows keys and the
+Source of truth for columns/constraints: `supabase/proposal/0000_proposed_schema.sql`. This diagram shows keys and the
 attributes that matter for reasoning. Every table also has `user_id -> auth.users` (omitted from edges for readability),
 `created_at`, `updated_at`; most have `archived_at` / `deleted_at`.
 

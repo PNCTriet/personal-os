@@ -71,7 +71,7 @@ with `eslint-plugin-boundaries` (modules import each other only via `index.ts`; 
 repositories/Supabase; secret client only from `src/lib/supabase/admin.ts`), Prettier, Vitest, folder skeleton
 `src/{app,modules/{work,platform},lib,components}` per architecture.md §3, Node version pinned (`.nvmrc`, `engines`).
 Move `supabase/migrations/0000_proposed_schema.sql` → `supabase/proposal/` (the CLI would otherwise apply it) and repoint
-`scripts/validate-schema.sh`. Accept: `pnpm dev` renders a placeholder; `pnpm typecheck lint test` pass; a deliberate
+`scripts/validate-schema.sh` (**done in MVP v0**, which also delivered a thin slice of T01–T16; see README). Accept: `pnpm dev` renders a placeholder; `pnpm typecheck lint test` pass; a deliberate
 cross-module deep import fails lint.
 
 **T02 CI base.** Deliverable: GitHub Actions on PR + `main`: install (cached), `typecheck`, `lint`, `test` (unit),

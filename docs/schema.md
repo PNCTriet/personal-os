@@ -1,6 +1,6 @@
 # Schema (PROPOSAL)
 
-File: [`supabase/migrations/0000_proposed_schema.sql`](../supabase/migrations/0000_proposed_schema.sql) — **proposal, not
+File: [`supabase/proposal/0000_proposed_schema.sql`](../supabase/proposal/0000_proposed_schema.sql) — **proposal, not
 an applied migration.** 30 tables, 4 views, 35 enums, RLS on every table.
 Table set (cuts/merges/additions) **accepted 2026-09-29 (ADR-015)**; data access via supabase-js + generated types, no ORM
 (ADR-003, accepted). Remaining pending ADRs (001, 002, 006, 007) can still change details before the Phase 1 split.
