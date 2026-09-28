@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ArrowLeftRight } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { todayISO } from "@/lib/dates";
 import { vnd } from "@/lib/format";
 import { getPreview, financeSummary, DOMAIN_PHASE } from "@/modules/preview";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function TransactionsPage() {
   const scope = await requireScope();
+  const { t } = await getI18n();
   const pv = getPreview(scope);
   const f = financeSummary(pv, todayISO(scope.ctx.timezone));
   const rows = pv.transactions.map((t) => ({ ...t }));
@@ -24,8 +26,8 @@ export default async function TransactionsPage() {
   ];
   return (
     <>
-      <PageHeader title="Transactions" subtitle="All amounts in VND. Calculations are deterministic (never AI-generated)." phase={phaseLabel(scope.ctx.mode === "demo", DOMAIN_PHASE.finance)}
-        actions={<button className="btn btn-primary" disabled title="Recording transactions ships in Phase 3">Add transaction</button>} />
+      <PageHeader title={t("nav.transactions")} subtitle={t("sub.transactions")} phase={phaseLabel(t, scope.ctx.mode === "demo", DOMAIN_PHASE.finance)}
+        actions={<button className="btn btn-primary" disabled title="Recording transactions ships in Phase 3">{t("btn.addTransaction")}</button>} />
       <section className="panel kpis" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))", marginBottom: 12 }}>
         {stats.map((s) => <div key={s.label} className="kpi"><span className="label">{s.label}</span><span className={`t-kpi ${s.cls}`} style={{ fontSize: 18 }}>{rows.length ? s.value : "—"}</span></div>)}
       </section>
@@ -44,7 +46,7 @@ export default async function TransactionsPage() {
             { key: "kind", label: "Type", kind: "pill", labels: { income: "Income", expense: "Expense", transfer: "Transfer" }, tones: { income: "green", expense: "gray", transfer: "blue" }, width: 100 },
             { key: "amount", label: "Amount", kind: "money-signed", align: "right", width: 150 },
           ]}
-          empty={previewEmpty(ArrowLeftRight, "transactions", DOMAIN_PHASE.finance, rows.length > 0)}
+          empty={previewEmpty(t, ArrowLeftRight, t("noun.transactions"), DOMAIN_PHASE.finance, rows.length > 0)}
         />
       </div>
     </>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Building2 } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { listCompanies } from "@/modules/companies";
 import { listProjects } from "@/modules/projects";
 import { isOpen, listTasks } from "@/modules/tasks";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CompaniesPage() {
   const scope = await requireScope();
+  const { t } = await getI18n();
   const [companies, projects, tasks] = await Promise.all([listCompanies(scope), listProjects(scope), listTasks(scope)]);
   const people = getPreview(scope).people;
   const rows = companies.map((c) => ({
@@ -23,7 +25,7 @@ export default async function CompaniesPage() {
   }));
   return (
     <>
-      <PageHeader title="Companies" subtitle={`${rows.length} companies · linked to projects and follow-ups`} />
+      <PageHeader title={t("nav.companies")} subtitle={t("sub.companies", { n: rows.length })} />
       <div className="panel">
         <DataTable
           rows={rows}
@@ -39,7 +41,7 @@ export default async function CompaniesPage() {
             { key: "people", label: "People", kind: "number", align: "right", width: 90 },
             { key: "followUps", label: "Open follow-ups", kind: "number", align: "right", width: 130 },
           ]}
-          empty={<EmptyState icon={Building2} title="No companies yet" body="Companies are created with projects and follow-ups. Editing ships in Phase 4." />}
+          empty={<EmptyState icon={Building2} title={t("empty.companies")} />}
         />
       </div>
     </>

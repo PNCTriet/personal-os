@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Send } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { getPreview, DOMAIN_PHASE } from "@/modules/preview";
 import { DataTable } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page";
@@ -12,11 +13,12 @@ const STATUS = { draft: "Draft", active: "Active", paused: "Paused", completed: 
 
 export default async function CampaignsPage() {
   const scope = await requireScope();
+  const { t } = await getI18n();
   const rows = getPreview(scope).campaigns.map((c) => ({ ...c, openRate: c.sent ? c.opened / c.sent : null, replyRate: c.sent ? c.replied / c.sent : null }));
   return (
     <>
-      <PageHeader title="Campaigns" subtitle="Cold email sequences via Resend with suppression and audit" phase={phaseLabel(scope.ctx.mode === "demo", DOMAIN_PHASE.campaigns)}
-        actions={<button className="btn btn-primary" disabled title="Campaigns ship in Phase 4">New campaign</button>} />
+      <PageHeader title={t("nav.campaigns")} subtitle={t("sub.campaigns")} phase={phaseLabel(t, scope.ctx.mode === "demo", DOMAIN_PHASE.campaigns)}
+        actions={<button className="btn btn-primary" disabled title="Campaigns ship in Phase 4">{t("btn.newCampaign")}</button>} />
       <div className="panel">
         <DataTable
           rows={rows}
@@ -34,7 +36,7 @@ export default async function CampaignsPage() {
             { key: "replyRate", label: "Reply rate", kind: "percent", align: "right", width: 100 },
             { key: "updated_on", label: "Updated", kind: "date", width: 90 },
           ]}
-          empty={previewEmpty(Send, "campaigns", DOMAIN_PHASE.campaigns, rows.length > 0)}
+          empty={previewEmpty(t, Send, t("noun.campaigns"), DOMAIN_PHASE.campaigns, rows.length > 0)}
         />
       </div>
     </>

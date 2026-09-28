@@ -2,6 +2,7 @@
 
 import { useOptimistic, useTransition } from "react";
 import { changeTaskStatus } from "@/app/actions";
+import { useI18n } from "@/lib/i18n/client";
 
 type Status = "backlog" | "todo" | "in_progress" | "blocked" | "done" | "cancelled";
 
@@ -9,6 +10,7 @@ type Status = "backlog" | "todo" | "in_progress" | "blocked" | "done" | "cancell
 export function StatusCheck({ id, status, title }: { id: string; status: Status; title: string }) {
   const [pending, start] = useTransition();
   const [optimistic, set] = useOptimistic(status);
+  const { t } = useI18n();
   const done = optimistic === "done";
   return (
     <button
@@ -16,7 +18,7 @@ export function StatusCheck({ id, status, title }: { id: string; status: Status;
       className="check"
       data-state={optimistic}
       aria-pressed={done}
-      aria-label={done ? `Mark “${title}” as not done` : `Mark “${title}” as done`}
+      aria-label={t(done ? "task.markUndone" : "task.markDone", { t: title })}
       disabled={pending}
       onClick={() => start(async () => {
         const next: Status = done ? "todo" : "done";

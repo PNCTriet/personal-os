@@ -7,22 +7,23 @@ import { ArrowDown, ArrowUp, Columns3, ListChecks, Search, Table2 } from "lucide
 import { changeTaskStatus } from "@/app/actions";
 import type { TaskItem } from "./task-items";
 import { StatusCheck } from "./task-status";
+import { useI18n } from "@/lib/i18n/client";
 
 type Status = TaskItem["status"];
-const STATUS_LABEL: Record<Status, string> = { backlog: "Backlog", todo: "To do", in_progress: "In progress", blocked: "Blocked", done: "Done", cancelled: "Cancelled" };
+const STATUSES: Status[] = ["backlog", "todo", "in_progress", "blocked", "done", "cancelled"];
 const STATUS_TONE: Record<Status, string> = { backlog: "gray", todo: "gray", in_progress: "blue", blocked: "red", done: "green", cancelled: "none" };
-const PRIORITY_LABEL = { urgent: "Urgent", high: "High", normal: "Normal", low: "Low" } as const;
+const PRIORITIES = ["urgent", "high", "normal", "low"] as const;
 const PRIORITY_TONE = { urgent: "red", high: "orange", normal: "gray", low: "none" } as const;
 const PRIORITY_RANK = { urgent: 0, high: 1, normal: 2, low: 3 } as const;
 const STATUS_RANK: Record<Status, number> = { in_progress: 0, blocked: 1, todo: 2, backlog: 3, done: 4, cancelled: 5 };
 const BOARD: Status[] = ["backlog", "todo", "in_progress", "blocked", "done"];
 const VIEWS = [
-  { key: "open", label: "Open", test: (t: TaskItem) => t.status !== "done" && t.status !== "cancelled" },
-  { key: "due", label: "Due ≤ 7d", test: (t: TaskItem) => t.status !== "done" && t.status !== "cancelled" && (t.dueTone === "overdue" || t.dueTone === "today" || t.dueTone === "soon") },
-  { key: "follow_up", label: "Follow-ups", test: (t: TaskItem) => t.kind === "follow_up" && t.status !== "done" && t.status !== "cancelled" },
-  { key: "inbox", label: "Inbox", test: (t: TaskItem) => t.projectCode === null && t.status !== "done" && t.status !== "cancelled" },
-  { key: "done", label: "Done", test: (t: TaskItem) => t.status === "done" },
-  { key: "all", label: "All", test: () => true },
+  { key: "open", test: (t: TaskItem) => t.status !== "done" && t.status !== "cancelled" },
+  { key: "due", test: (t: TaskItem) => t.status !== "done" && t.status !== "cancelled" && (t.dueTone === "overdue" || t.dueTone === "today" || t.dueTone === "soon") },
+  { key: "follow_up", test: (t: TaskItem) => t.kind === "follow_up" && t.status !== "done" && t.status !== "cancelled" },
+  { key: "inbox", test: (t: TaskItem) => t.projectCode === null && t.status !== "done" && t.status !== "cancelled" },
+  { key: "done", test: (t: TaskItem) => t.status === "done" },
+  { key: "all", test: () => true },
 ] as const;
 type SortKey = "title" | "project" | "status" | "priority" | "due";
 
@@ -30,6 +31,9 @@ export function TasksView({ items, showProject = true, initialView = "open", ini
   items: TaskItem[]; showProject?: boolean; initialView?: string; initialLayout?: "table" | "board";
 }) {
   const router = useRouter();
+  const { t: tr } = useI18n();
+  const STATUS_LABEL = (st: Status) => tr(`task.status.${st}`);
+  const PRIORITY_LABEL = (p: TaskItem["priority"]) => tr(`task.priority.${p}`);
   const pathname = usePathname();
   const params = useSearchParams();
   const [layout, setLayout] = useState<"table" | "board">(initialLayout);
@@ -73,7 +77,7 @@ export function TasksView({ items, showProject = true, initialView = "open", ini
     start(async () => {
       const res = await changeTaskStatus(id, status);
       if (!res.ok) {
-        setError(res.message ?? "Could not update the task");
+        setError(res.message ?? tr("task.updateFailed"));
         setOverrides((o) => { const n = { ...o }; delete n[id]; return n; });
       }
     });
@@ -86,8 +90,8 @@ export function TasksView({ items, showProject = true, initialView = "open", ini
     router.replace(`${pathname}${sp.size ? `?${sp}` : ""}`, { scroll: false });
   }
 
-  const th = (key: SortKey, label: string, style?: React.CSSProperties) => (
-    <th style={style} aria-sort={sort.key === key ? (sort.dir === 1 ? "ascending" : "descending") : undefined}>
+  const th = (key: SortKey, label: string, style?: React.CSSProperties, className?: string) => (
+    <th style={style} className={className} aria-sort={sort.key === key ? (sort.dir === 1 ? "ascending" : "descending") : undefined}>
       <button type="button" onClick={() => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : 1 }))}>
         {label}{sort.key === key && (sort.dir === 1 ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
       </button>
@@ -96,49 +100,51 @@ export function TasksView({ items, showProject = true, initialView = "open", ini
 
   return (
     <div className="panel">
-      <div className="toolbar">
+      <div className="toolbar toolbar-tasks">
         <div className="segmented" role="group" aria-label="Layout">
-          <button type="button" aria-pressed={layout === "table"} onClick={() => switchLayout("table")}><Table2 aria-hidden="true" />Table</button>
-          <button type="button" aria-pressed={layout === "board"} onClick={() => switchLayout("board")}><Columns3 aria-hidden="true" />Board</button>
+          <button type="button" aria-pressed={layout === "table"} onClick={() => switchLayout("table")} aria-label={tr("task.table")}><Table2 aria-hidden="true" /><span className="hide-mobile">{tr("task.table")}</span></button>
+          <button type="button" aria-pressed={layout === "board"} onClick={() => switchLayout("board")} aria-label={tr("task.board")}><Columns3 aria-hidden="true" /><span className="hide-mobile">{tr("task.board")}</span></button>
         </div>
         <div className="search">
           <Search aria-hidden="true" />
-          <input className="field" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter tasks…" aria-label="Filter tasks" />
+          <input className="field" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("task.filter")} aria-label={tr("task.filter")} />
         </div>
+        <div className="chip-row">
         {layout === "table" && VIEWS.map((v) => (
           <button key={v.key} type="button" className="chip" aria-pressed={view === v.key} onClick={() => setView(v.key)}>
-            {v.label} <span className="n">{all.filter(v.test).length}</span>
+            {tr(`task.view.${v.key}`)} <span className="n">{all.filter(v.test).length}</span>
           </button>
         ))}
         <select className="select" aria-label="Priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
-          <option value="">Priority: All</option>
-          {Object.entries(PRIORITY_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          <option value="">{tr("task.priorityAll")}</option>
+          {PRIORITIES.map((k) => <option key={k} value={k}>{PRIORITY_LABEL(k)}</option>)}
         </select>
         {showProject && (
           <select className="select" aria-label="Project" value={project} onChange={(e) => setProject(e.target.value)}>
-            <option value="">Project: All</option>
-            <option value="inbox">Inbox</option>
+            <option value="">{tr("task.projectAll")}</option>
+            <option value="inbox">{tr("common.inbox")}</option>
             {projects.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
           </select>
         )}
-        <span className="muted t-small tabular" style={{ marginLeft: "auto" }}>{error ? <span className="tone-red">{error}</span> : `${filtered.length} tasks`}</span>
+        <span className="muted t-small tabular" style={{ marginLeft: "auto" }}>{error ? <span className="tone-red">{error}</span> : tr("task.count", { n: filtered.length })}</span>
+        </div>
       </div>
 
       {layout === "table" ? (
         sorted.length === 0 ? (
-          <div className="empty"><ListChecks aria-hidden="true" /><div className="t-h2">No tasks match</div><div>Try another view or clear the filters.</div></div>
+          <div className="empty"><ListChecks aria-hidden="true" /><div className="t-h2">{tr("task.noMatch")}</div><div>{tr("task.noMatchBody")}</div></div>
         ) : (
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
                   <th style={{ width: 36 }} aria-label="Done" />
-                  {th("title", "Task")}
-                  <th style={{ width: 150 }}>Code</th>
-                  {showProject && th("project", "Project", { width: 170 })}
-                  {th("status", "Status", { width: 140 })}
-                  {th("priority", "Priority", { width: 100 })}
-                  {th("due", "Due", { width: 120 })}
+                  {th("title", tr("task.col.task"))}
+                  <th style={{ width: 150 }} className="hide-mobile">{tr("task.col.code")}</th>
+                  {showProject && th("project", tr("task.col.project"), { width: 170 }, "hide-mobile")}
+                  {th("status", tr("task.col.status"), { width: 140 }, "hide-mobile")}
+                  {th("priority", tr("task.col.priority"), { width: 100 }, "hide-mobile")}
+                  {th("due", tr("task.col.due"), { width: 120 })}
                 </tr>
               </thead>
               <tbody>
@@ -147,24 +153,24 @@ export function TasksView({ items, showProject = true, initialView = "open", ini
                   return (
                     <tr key={t.id} className={done ? "task-done" : undefined}>
                       <td style={{ paddingRight: 0 }}><StatusCheck key={t.status} id={t.id} status={t.status} title={t.title} /></td>
-                      <td style={{ maxWidth: 520 }}>
+                      <td className="task-cell">
                         <span className="task-title">{t.title}</span>
-                        {t.kind === "follow_up" && <span className="pill" data-tone="none" style={{ marginLeft: 8 }}>Follow-up{t.company ? ` · ${t.company}` : ""}</span>}
-                        {t.kind === "milestone" && <span className="pill" data-tone="none" style={{ marginLeft: 8 }}>Milestone</span>}
+                        {t.kind === "follow_up" && <span className="pill" data-tone="none" style={{ marginLeft: 8 }}>{tr("task.kind.follow_up")}{t.company ? ` · ${t.company}` : ""}</span>}
+                        {t.kind === "milestone" && <span className="pill" data-tone="none" style={{ marginLeft: 8 }}>{tr("task.kind.milestone")}</span>}
                       </td>
-                      <td className="tabular muted">{t.code ?? "—"}</td>
-                      {showProject && <td>{t.projectCode ? <Link href={`/projects/${t.projectCode}`} className="hover:underline">{t.project}</Link> : <span className="muted">Inbox</span>}</td>}
-                      <td>
+                      <td className="tabular muted hide-mobile">{t.code ?? "—"}</td>
+                      {showProject && <td className="hide-mobile">{t.projectCode ? <Link href={`/projects/${t.projectCode}`} className="hover:underline">{t.project}</Link> : <span className="muted">{tr("common.inbox")}</span>}</td>}
+                      <td className="hide-mobile">
                         <span className="pill" data-tone={STATUS_TONE[t.status]} style={{ position: "relative", paddingRight: 20 }}>
-                          {STATUS_LABEL[t.status]}
+                          {STATUS_LABEL(t.status)}
                           <select aria-label={`Status of ${t.title}`} value={t.status} onChange={(e) => setStatus(t.id, e.target.value as Status)}
                             style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}>
-                            {Object.entries(STATUS_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                            {STATUSES.map((k) => <option key={k} value={k}>{STATUS_LABEL(k)}</option>)}
                           </select>
                           <svg width="8" height="5" viewBox="0 0 10 6" style={{ position: "absolute", right: 8 }} aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
                         </span>
                       </td>
-                      <td><span className="pill" data-tone={PRIORITY_TONE[t.priority]}>{PRIORITY_LABEL[t.priority]}</span></td>
+                      <td className="hide-mobile"><span className="pill" data-tone={PRIORITY_TONE[t.priority]}>{PRIORITY_LABEL(t.priority)}</span></td>
                       <td className={`tabular ${t.dueTone === "overdue" && !done ? "tone-red" : t.dueTone === "later" || done ? "muted" : ""}`} style={{ fontWeight: t.dueTone === "overdue" || t.dueTone === "today" ? 600 : 400 }}>
                         {t.dueText ?? <span className="muted">—</span>}
                       </td>
@@ -185,7 +191,7 @@ export function TasksView({ items, showProject = true, initialView = "open", ini
                 onDragLeave={() => setOver((o) => (o === status ? null : o))}
                 onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain"); setOver(null); setDragId(null); if (id) setStatus(id, status); }}>
                 <div className="board-col-head">
-                  <span className="dot" data-tone={STATUS_TONE[status]} />{STATUS_LABEL[status]}
+                  <span className="dot" data-tone={STATUS_TONE[status]} />{STATUS_LABEL(status)}
                   <span className="muted tabular" style={{ fontWeight: 400 }}>{cards.length}</span>
                 </div>
                 <div className="board-cards">
@@ -194,21 +200,21 @@ export function TasksView({ items, showProject = true, initialView = "open", ini
                       onDragStart={(e) => { e.dataTransfer.setData("text/plain", t.id); e.dataTransfer.effectAllowed = "move"; setDragId(t.id); }}
                       onDragEnd={() => { setDragId(null); setOver(null); }}>
                       <div style={{ fontWeight: 600, lineHeight: 1.35 }}>{t.title}</div>
-                      <div className="t-small muted" style={{ marginTop: 3 }}>{t.code ?? "Inbox"}{showProject && t.project ? ` · ${t.project}` : ""}</div>
+                      <div className="t-small muted" style={{ marginTop: 3 }}>{t.code ?? tr("common.inbox")}{showProject && t.project ? ` · ${t.project}` : ""}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
-                        {t.priority !== "normal" && <span className="pill" data-tone={PRIORITY_TONE[t.priority]}>{PRIORITY_LABEL[t.priority]}</span>}
-                        {t.kind !== "task" && <span className="pill" data-tone="none">{t.kind === "follow_up" ? "Follow-up" : "Milestone"}</span>}
+                        {t.priority !== "normal" && <span className="pill" data-tone={PRIORITY_TONE[t.priority]}>{PRIORITY_LABEL(t.priority)}</span>}
+                        {t.kind !== "task" && <span className="pill" data-tone="none">{tr(`task.kind.${t.kind}`)}</span>}
                         {t.dueText && status !== "done" && (
                           <span className={`t-small tabular ${t.dueTone === "overdue" ? "tone-red" : "muted"}`} style={{ marginLeft: "auto" }}>{t.dueText}</span>
                         )}
                       </div>
-                      <label className="sr-only" htmlFor={`mv-${t.id}`}>Move {t.title}</label>
+                      <label className="sr-only" htmlFor={`mv-${t.id}`}>{t.title}</label>
                       <select id={`mv-${t.id}`} className="sr-only" value={t.status} onChange={(e) => setStatus(t.id, e.target.value as Status)}>
-                        {BOARD.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+                        {BOARD.map((s) => <option key={s} value={s}>{STATUS_LABEL(s)}</option>)}
                       </select>
                     </article>
                   ))}
-                  {cards.length === 0 && <div className="t-small muted" style={{ padding: "8px 4px" }}>Drop tasks here</div>}
+                  {cards.length === 0 && <div className="t-small muted" style={{ padding: "8px 4px" }}>{tr("task.dropHere")}</div>}
                 </div>
               </div>
             );

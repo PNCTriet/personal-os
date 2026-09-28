@@ -6,6 +6,8 @@ import { resolveScope } from "@/lib/session";
 import { themeScript } from "@/components/theme-toggle";
 import { AppShell } from "@/components/shell/app-shell";
 import { loadShellData } from "@/components/shell/shell-data";
+import { getI18n } from "@/lib/i18n/server";
+import { I18nProvider } from "@/lib/i18n/client";
 
 // Fallback for non-Apple platforms (DESIGN.md: SF Pro → system-ui → Inter).
 const inter = Inter({ subsets: ["latin", "vietnamese"], variable: "--font-inter", display: "swap" });
@@ -17,6 +19,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
   themeColor: [{ media: "(prefers-color-scheme: light)", color: "#f5f5f7" }, { media: "(prefers-color-scheme: dark)", color: "#000000" }],
 };
 
@@ -24,18 +29,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const demo = appMode() === "demo";
   const scope = await resolveScope("web");
   const shell = scope ? await loadShellData(scope) : null;
+  const { locale, t } = await getI18n();
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang={locale} className={inter.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        <a href="#main" className="sr-only focus:not-sr-only">Skip to content</a>
+        <I18nProvider locale={locale}>
+        <a href="#main" className="sr-only focus:not-sr-only">{t("shell.skip")}</a>
         {shell ? (
           <AppShell demo={demo} signedIn={!!scope} counts={shell.counts} index={shell.index} pickers={shell.pickers}>{children}</AppShell>
         ) : (
           <main id="main">{children}</main>
         )}
+        </I18nProvider>
       </body>
     </html>
   );

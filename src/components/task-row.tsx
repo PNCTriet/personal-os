@@ -1,11 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import type { TaskItem } from "./task-items";
 import { StatusCheck } from "./task-status";
+import { useI18n } from "@/lib/i18n/client";
 
 const PRIORITY_TONE = { urgent: "red", high: "orange", normal: "none", low: "none" } as const;
 
 /** Compact list row (dashboard, today, project detail). */
 export function TaskRow({ t, showProject = true }: { t: TaskItem; showProject?: boolean }) {
+  const { t: tr } = useI18n();
   const done = t.status === "done" || t.status === "cancelled";
   return (
     <div className={`row ${done ? "task-done" : ""}`}>
@@ -15,14 +19,14 @@ export function TaskRow({ t, showProject = true }: { t: TaskItem; showProject?: 
         <div className="t-small muted truncate-1">
           {[
             t.code,
-            showProject ? (t.projectCode ? <Link key="p" href={`/projects/${t.projectCode}`} className="hover:underline">{t.project}</Link> : "Inbox") : null,
-            t.kind === "follow_up" ? `Follow-up${t.company ? `: ${t.company}` : ""}` : t.kind === "milestone" ? "Milestone" : null,
-            t.status === "blocked" ? "Blocked" : null,
+            showProject ? (t.projectCode ? <Link key="p" href={`/projects/${t.projectCode}`} className="hover:underline">{t.project}</Link> : tr("common.inbox")) : null,
+            t.kind === "follow_up" ? `${tr("task.kind.follow_up")}${t.company ? `: ${t.company}` : ""}` : t.kind === "milestone" ? tr("task.kind.milestone") : null,
+            t.status === "blocked" ? tr("task.status.blocked") : null,
           ].filter(Boolean).map((part, i) => <span key={i}>{i > 0 ? " · " : ""}{part}</span>)}
         </div>
       </div>
       {(t.priority === "urgent" || t.priority === "high") && !done && (
-        <span className="dot hide-mobile" data-tone={PRIORITY_TONE[t.priority]} title={t.priority === "urgent" ? "Urgent" : "High priority"} />
+        <span className="dot hide-mobile" data-tone={PRIORITY_TONE[t.priority]} title={tr(`task.priority.${t.priority}`)} />
       )}
       {t.dueText && !done && (
         <span className={`t-small tabular ${t.dueTone === "overdue" ? "tone-red" : t.dueTone === "today" ? "" : "muted"}`} style={{ fontWeight: t.dueTone === "overdue" || t.dueTone === "today" ? 600 : 400, whiteSpace: "nowrap" }}>

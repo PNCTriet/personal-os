@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PieChart } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { vnd } from "@/lib/format";
 import { getPreview, DOMAIN_PHASE } from "@/modules/preview";
 import { DataTable } from "@/components/ui/data-table";
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function BudgetsPage() {
   const scope = await requireScope();
+  const { t } = await getI18n();
   const pv = getPreview(scope);
   const rows = pv.budgets.map((b) => {
     const used = b.limit ? b.spent / b.limit : 0;
@@ -21,7 +23,7 @@ export default async function BudgetsPage() {
   const spent = rows.reduce((s, r) => s + r.spent, 0);
   return (
     <>
-      <PageHeader title="Budgets" subtitle="This month · spend is derived from transactions" phase={phaseLabel(scope.ctx.mode === "demo", DOMAIN_PHASE.finance)} />
+      <PageHeader title={t("nav.budgets")} subtitle={t("sub.budgets")} phase={phaseLabel(t, scope.ctx.mode === "demo", DOMAIN_PHASE.finance)} />
       {rows.length > 0 && (
         <div className="panel" style={{ padding: 14, marginBottom: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, gap: 12, flexWrap: "wrap" }}>
@@ -45,7 +47,7 @@ export default async function BudgetsPage() {
             { key: "limit", label: "Budget", kind: "money", align: "right", width: 140 },
             { key: "remaining", label: "Remaining", kind: "money", align: "right", width: 140 },
           ]}
-          empty={previewEmpty(PieChart, "budgets", DOMAIN_PHASE.finance, rows.length > 0)}
+          empty={previewEmpty(t, PieChart, t("noun.budgets"), DOMAIN_PHASE.finance, rows.length > 0)}
         />
       </div>
     </>

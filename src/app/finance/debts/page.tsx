@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { HandCoins } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { todayISO } from "@/lib/dates";
 import { vnd } from "@/lib/format";
 import { getPreview, financeSummary, DOMAIN_PHASE } from "@/modules/preview";
@@ -14,13 +15,14 @@ const DIR = { receivable: "Owed to you", payable: "You owe" };
 
 export default async function DebtsPage() {
   const scope = await requireScope();
+  const { t } = await getI18n();
   const pv = getPreview(scope);
   const today = todayISO(scope.ctx.timezone);
   const f = financeSummary(pv, today);
   const rows = pv.debts.map((d) => ({ ...d, overdue: d.due_on !== null && d.due_on < today ? "Overdue" : null, paid: d.principal ? 1 - d.outstanding / d.principal : 0 }));
   return (
     <>
-      <PageHeader title="Debts & receivables" subtitle={rows.length ? `Owed to you ${vnd(f.receivable)} · You owe ${vnd(f.payable)}` : "Money owed to you and by you"} phase={phaseLabel(scope.ctx.mode === "demo", DOMAIN_PHASE.finance)} />
+      <PageHeader title={t("title.debts")} subtitle={rows.length ? t("sub.debtsN", { r: vnd(f.receivable), p: vnd(f.payable) }) : t("sub.debts")} phase={phaseLabel(t, scope.ctx.mode === "demo", DOMAIN_PHASE.finance)} />
       <div className="panel">
         <DataTable
           rows={rows}
@@ -37,7 +39,7 @@ export default async function DebtsPage() {
             { key: "overdue", label: "", kind: "pill", tones: { Overdue: "red" }, width: 90, sortable: false },
             { key: "outstanding", label: "Outstanding", kind: "money", align: "right", width: 140 },
           ]}
-          empty={previewEmpty(HandCoins, "debts", DOMAIN_PHASE.finance, rows.length > 0)}
+          empty={previewEmpty(t, HandCoins, t("noun.debts"), DOMAIN_PHASE.finance, rows.length > 0)}
         />
       </div>
     </>

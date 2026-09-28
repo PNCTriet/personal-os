@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ScrollText } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { relativeTime } from "@/lib/dates";
 import { actorLabel, describeActivity, listActivity } from "@/modules/activity";
 import { DataTable } from "@/components/ui/data-table";
@@ -11,14 +12,15 @@ export const dynamic = "force-dynamic";
 
 export default async function AuditLogPage() {
   const scope = await requireScope();
+  const { t, locale } = await getI18n();
   const entries = await listActivity(scope, { limit: 200 });
   const rows = entries.map((e) => {
     const d = describeActivity(e);
-    return { id: e.id, when: relativeTime(e.created_at), whenSort: e.created_at, action: e.action, subject: d.subject, code: d.code, actor: actorLabel(e), source: e.source, entity: e.entity_type };
+    return { id: e.id, when: relativeTime(e.created_at, locale), whenSort: e.created_at, action: e.action, subject: d.subject, code: d.code, actor: actorLabel(e), source: e.source, entity: e.entity_type };
   });
   return (
     <>
-      <PageHeader title="Audit log" subtitle="Append-only record of every change: who, what, when and through which channel" />
+      <PageHeader title={t("nav.auditLog")} subtitle={t("sub.audit")} />
       <div className="panel">
         <DataTable
           rows={rows}
@@ -34,7 +36,7 @@ export default async function AuditLogPage() {
             { key: "actor", label: "Actor", width: 110 },
             { key: "source", label: "Source", kind: "pill", tones: { web: "gray", api: "blue", mcp: "orange", ai_command: "orange", webhook: "gray", system: "none" }, width: 100 },
           ]}
-          empty={<EmptyState icon={ScrollText} title="No audit entries" body="Changes to projects and tasks appear here." />}
+          empty={<EmptyState icon={ScrollText} title={t("empty.audit")} body={t("empty.auditBody")} />}
         />
       </div>
     </>

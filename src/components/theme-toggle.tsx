@@ -9,9 +9,9 @@ export function toggleTheme() {
   try { localStorage.setItem("theme", next); } catch {}
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ label = "Toggle dark mode" }: { label?: string }) {
   return (
-    <button type="button" onClick={toggleTheme} className="icon-btn" aria-label="Toggle dark mode" title="Toggle dark mode">
+    <button type="button" onClick={toggleTheme} className="icon-btn" aria-label={label} title={label}>
       <Moon className="theme-icon-dark" />
       <Sun className="theme-icon-light" />
     </button>

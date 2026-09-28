@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { PageHeader, Panel, PhaseHint } from "@/components/ui/page";
 
 export const metadata: Metadata = { title: "Integrations" };
@@ -17,9 +18,10 @@ const INTEGRATIONS = [
 
 export default async function IntegrationsPage() {
   await requireScope();
+  const { t } = await getI18n();
   return (
     <>
-      <PageHeader title="Integrations" subtitle="External services are replaceable adapters, never the source of truth" />
+      <PageHeader title={t("nav.integrations")} subtitle={t("sub.integrations")} />
       <Panel flush>
         <div className="rows">
           {INTEGRATIONS.map((i) => (
@@ -31,7 +33,7 @@ export default async function IntegrationsPage() {
               </div>
               <span className="pill" data-tone="gray">Not connected</span>
               <PhaseHint text={i.phase} />
-              <button className="btn btn-plain hide-mobile" disabled>Connect</button>
+              <button className="btn btn-plain hide-mobile" disabled>{t("btn.connect")}</button>
             </div>
           ))}
         </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CalendarDays } from "lucide-react";
 import { requireScope } from "@/lib/session";
+import { getI18n } from "@/lib/i18n/server";
 import { longDate } from "@/lib/dates";
 import { clock, dayKey } from "@/lib/format";
 import { getToday } from "@/modules/today";
@@ -16,18 +17,18 @@ export const dynamic = "force-dynamic";
 
 export default async function TodayPage() {
   const scope = await requireScope();
-  const [t, { lk, pickers }] = await Promise.all([getToday(scope), loadLookups(scope)]);
+  const [t, { lk, pickers }, { t: tr, locale }] = await Promise.all([getToday(scope), loadLookups(scope), getI18n()]);
   const events = getPreview(scope).events.filter((e) => dayKey(e.starts_at, scope.ctx.timezone) === t.today);
   const sections = [
-    { id: "overdue", title: "Overdue", items: toTaskItems(t.overdue, lk), empty: "Nothing overdue." },
-    { id: "due", title: "Due today", items: toTaskItems(t.dueToday, lk), empty: "Nothing else is due today." },
-    { id: "progress", title: "In progress", items: toTaskItems(t.inProgress, lk), empty: "Nothing in progress." },
-    { id: "upcoming", title: "Next 7 days", items: toTaskItems(t.upcoming, lk), empty: "A quiet week ahead." },
+    { id: "overdue", title: tr("today.overdue"), items: toTaskItems(t.overdue, lk), empty: tr("today.emptyOverdue") },
+    { id: "due", title: tr("today.due"), items: toTaskItems(t.dueToday, lk), empty: tr("today.emptyDue") },
+    { id: "progress", title: tr("today.progress"), items: toTaskItems(t.inProgress, lk), empty: tr("today.emptyProgress") },
+    { id: "upcoming", title: tr("today.upcoming"), items: toTaskItems(t.upcoming, lk), empty: tr("today.emptyUpcoming") },
   ];
   return (
     <>
-      <PageHeader title="Today" subtitle={`${longDate(t.today)} · ${t.counts.dueToday} due, ${t.counts.overdue} overdue, ${t.inProgress.length} in progress`} />
-      <div className="panel" style={{ padding: 12, marginBottom: 12 }}>
+      <PageHeader title={tr("nav.today")} subtitle={tr("today.subtitle", { date: longDate(t.today, locale), due: t.counts.dueToday, overdue: t.counts.overdue })} />
+      <div className="panel hide-mobile" style={{ padding: 12, marginBottom: 12 }}>
         <QuickAdd id="today-add" projects={pickers.projects} companies={pickers.companies} defaultDue={t.today} compact />
       </div>
       <div className="grid-dash">
@@ -38,8 +39,8 @@ export default async function TodayPage() {
             </Panel>
           ))}
         </div>
-        <Panel className="span-4" title="Schedule" flush style={{ alignSelf: "start" }}>
-          {events.length === 0 ? <EmptyState icon={CalendarDays} title="No events" phase="Calendar connects in Phase 2" /> : (
+        <Panel className="span-4" title={tr("today.schedule")} flush style={{ alignSelf: "start" }}>
+          {events.length === 0 ? <EmptyState icon={CalendarDays} title={tr("today.noEvents")} phase={tr("today.calendarLater")} /> : (
             <div className="rows">
               {events.map((e) => (
                 <div key={e.id} className="row" style={{ alignItems: "flex-start" }}>
