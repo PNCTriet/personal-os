@@ -9,20 +9,19 @@ Format: **Status** · **Decision** · Why · Trade-off · **Open question for Fo
 | 2026-09-29 | ADR-003, ADR-012, ADR-013, ADR-015, ADR-017 | **Accepted** by Founder (details below) |
 | 2026-09-29 | ADR-017 amended: first client Cursor, then ChatGPT, Claude later (Founder); minimal OAuth pulled into Phase 1.5b (Technical Director) | **Accepted** |
 | 2026-09-29 | ADR-004, 005, 008, 010, 011, 016, 018, 019, 020, 021 | **Accepted** by Technical Director (Ivan), as proposed |
-| — | ADR-001, ADR-002, ADR-006, ADR-007, ADR-009, ADR-014 (★) | *Proposed*, awaiting Founder |
+| 2026-09-29 | ADR-001 (vertical modules), ADR-002 (single owner, API keys for bots), ADR-006 (UUID + human codes, re-code on move) | **Accepted** (Founder delegated to Technical Director; proposed option) |
+| — | ADR-007, ADR-009, ADR-014 (★) | *Proposed*, awaiting Founder |
 
-Phase 1 plan (docs/phase-1-plan.md) assumes the *proposed* option of every pending ADR. ADR-001 must be locked before
-`HOWL-POS-P1-T01` (scaffold), ADR-002 and ADR-006 before `HOWL-POS-P1-T04` (first migration).
-ADR-007/009/014 only block Phases 3/2/2 respectively.
+All ADRs blocking Phase 1 are accepted. ADR-007/009/014 only block Phases 3/2/2 respectively.
 
 ### ADR-001 Modular monolith with vertical modules ★
-**Status:** *Proposed* — awaiting Founder.
+**Status:** **Accepted** 2026-09-29 (Founder delegated to Technical Director; proposed option).
 **Decision:** One Next.js app; `src/modules/<domain>/{service,domain,repository,schemas,operations}.ts`; boundaries lint-enforced; no Edge Functions.
 Why: spec §3/§15; keeps each domain in one place. Trade-off: deviates from spec §5's layer-first folders.
 **Q:** OK to use vertical modules instead of root `services/` + `repositories/`?
 
 ### ADR-002 Single owner, multi-user-ready rows ★
-**Status:** *Proposed* — awaiting Founder.
+**Status:** **Accepted** 2026-09-29 (Founder delegated to Technical Director; proposed option).
 **Decision:** `user_id` on every row + RLS; sign-in restricted to `OWNER_EMAIL`; no sign-up, no teams. Ivan's automation = API keys.
 Why: near-zero cost now, avoids a rewrite later. Trade-off: Ivan is not a separate *user* with his own login in v1.
 **Q:** Does Ivan need his own login (read-only?) in v1, or are named API keys enough?
@@ -53,7 +52,7 @@ Why: DB-level integrity (triggers, RLS, partial indexes) is first-class in SQL. 
 Why: no mapping layer; stable for external consumers. Trade-off: snake_case in TS code (acceptable; types are generated).
 
 ### ADR-006 Identity: UUID + human codes ★
-**Status:** *Proposed* — awaiting Founder.
+**Status:** **Accepted** 2026-09-29 (Founder delegated to Technical Director; proposed option).
 **Decision:** UUID v4 PKs. Codes only for projects (owner-chosen, immutable, never reused) and tasks (`{project}-T{NN}`, DB-assigned). Moving a task assigns a new code; old code kept in `previous_codes` and still resolves.
 Why: spec §7; codes are handles, not identity. Trade-off: task codes can change on move.
 **Q:** On move, re-code (recommended, Jira-like) or keep the original code forever? Is `HOWL-XXX-NN` the required project pattern or free-form uppercase segments?
