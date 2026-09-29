@@ -145,7 +145,7 @@ function CellView({ col, row, first, term, locale }: { col: Column; row: Row; fi
   const label = (x: string) => (col.labels ? term(col.labels[x] ?? x) : col.kind === "pill" ? term(x) : x);
   let node: ReactNode;
   switch (col.kind) {
-    case "strong": node = <span style={{ fontWeight: 600 }}>{label(String(v))}</span>; break;
+    case "strong": node = <span style={{ fontWeight: 500 }}>{label(String(v))}</span>; break;
     case "muted": node = <span className="muted">{label(String(v))}</span>; break;
     case "mono": node = <span className="tabular muted">{String(v)}</span>; break;
     case "money": node = <span className="tabular">{vnd(Number(v))}</span>; break;
@@ -160,7 +160,7 @@ function CellView({ col, row, first, term, locale }: { col: Column; row: Row; fi
       node = <span style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%" }}><span className="progress" data-tone={raw > 1 ? "red" : undefined} style={{ flex: 1 }}><span style={{ transform: `scaleX(${n})` }} /></span><span className="tabular muted t-small" style={{ width: 32, textAlign: "right" }}>{Math.round(raw * 100)}%</span></span>;
       break;
     }
-    case "person": node = <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span className="avatar">{initials(String(v))}</span><span style={{ fontWeight: 600 }}>{String(v)}</span></span>; break;
+    case "person": node = <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span className="avatar">{initials(String(v))}</span><span style={{ fontWeight: 500 }}>{String(v)}</span></span>; break;
     case "tags": node = <span style={{ display: "inline-flex", gap: 4 }}>{(v as string[]).map((t) => <span key={t} className="pill" data-tone="none">{t}</span>)}</span>; break;
     default: node = String(label(String(v)));
   }

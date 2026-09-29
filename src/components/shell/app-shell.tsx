@@ -9,19 +9,22 @@ import { ICONS } from "./icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CommandPalette, type SearchIndex } from "./command-palette";
 import { QuickAddDialog } from "./quick-add-dialog";
+import { UserMenu } from "./user-menu";
+import { RefreshButton } from "./refresh-button";
 import { saveLocale, useI18n } from "@/lib/i18n/client";
 import type { Locale } from "@/lib/i18n";
 
 export interface ShellProps {
   demo: boolean;
   signedIn: boolean;
+  displayName: string;
   counts: Partial<Record<"tasks" | "today" | "inbox" | "approvals", number>>;
   index: SearchIndex;
   pickers: { projects: { id: string; code: string; name: string }[]; companies: { id: string; name: string }[] };
   children: ReactNode;
 }
 
-export function AppShell({ demo, signedIn, counts, index, pickers, children }: ShellProps) {
+export function AppShell({ demo, signedIn, displayName, counts, index, pickers, children }: ShellProps) {
   const path = usePathname();
   const router = useRouter();
   const { t, locale } = useI18n();
@@ -65,9 +68,10 @@ export function AppShell({ demo, signedIn, counts, index, pickers, children }: S
       <aside className="sidebar" aria-label="Sidebar">
         <Link href="/" className="sidebar-brand" title="Personal OS">
           <span className="brand-mark" aria-hidden="true">
-            <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="3" fill="none" stroke="currentColor" strokeWidth="1.6" /><circle cx="6" cy="6" r="1.6" fill="currentColor" /></svg>
+            <svg width="14" height="14" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="3" fill="none" stroke="currentColor" strokeWidth="1.6" /><circle cx="6" cy="6" r="1.6" fill="currentColor" /></svg>
           </span>
-          <span className="label">Personal OS</span>
+          <span className="label brand-full">Personal OS</span>
+          <span className="brand-short">POS</span>
         </Link>
         <nav aria-label="Primary">
           {NAV.map((g, gi) => (
@@ -107,15 +111,16 @@ export function AppShell({ demo, signedIn, counts, index, pickers, children }: S
           <div style={{ flex: 1 }} />
           {demo && <span className="badge-demo hide-mobile" title={t("shell.demoHint")}>{t("shell.demo")}</span>}
           <LangSwitch className="hide-mobile" label={t("shell.language")} locale={locale} onChange={setLocale} />
+          <RefreshButton />
           <ThemeToggle label={t("shell.toggleTheme")} />
-          {signedIn && !demo && (
-            <form action="/auth/signout" method="post" className="hide-mobile"><button className="btn btn-plain" type="submit">{t("shell.signOut")}</button></form>
-          )}
+          <UserMenu name={displayName} signedIn={signedIn} demo={demo} />
           <button type="button" className="btn btn-primary" onClick={() => setQuickAdd(true)} aria-label={t("shell.newTask")}>
             <Plus aria-hidden="true" /><span className="hide-mobile">{t("shell.newTask")}</span>
           </button>
         </header>
-        <main id="main" className="content" key={path}>{children}</main>
+        <main id="main" className="content" key={path}>
+          <div className="page-shell">{children}</div>
+        </main>
       </div>
 
       <CommandPalette open={palette} onOpenChange={setPalette} index={index} onQuickAdd={() => { setPalette(false); setQuickAdd(true); }} onToggleSidebar={toggleSidebar} onToggleLocale={() => setLocale(locale === "vi" ? "en" : "vi")} />

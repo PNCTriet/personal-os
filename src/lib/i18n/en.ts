@@ -15,6 +15,11 @@ export const en = {
   "shell.signOut": "Sign out", "shell.demo": "Demo", "shell.demoHint": "Demo mode: sample data in server memory, no sign-in. Resets on restart.",
   "shell.openNav": "Open navigation", "shell.closeNav": "Close navigation", "shell.toggleSidebar": "Toggle sidebar", "shell.toggleTheme": "Toggle dark mode",
   "shell.language": "Language", "shell.switchTo": "Tiếng Việt", "shell.skip": "Skip to content", "shell.close": "Close",
+  "shell.refresh": "Reload", "shell.profile": "Profile",
+  "login.title": "Personal OS", "login.subtitle": "Personal operating system for work, time and money",
+  "login.email": "Email", "login.submit": "Sign in", "login.sending": "Sending…",
+  "login.expired": "That link has expired or was already used. Request a new one.",
+  "login.emailHint": "We’ll email you a sign-in link.",
   "cmd.placeholder": "Search or jump to…", "cmd.empty": "No results.", "cmd.actions": "Actions", "cmd.goto": "Go to",
   "cmd.newProject": "New project", "cmd.switchLang": "Switch to Vietnamese",
 

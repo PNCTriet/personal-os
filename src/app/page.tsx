@@ -12,7 +12,7 @@ import { ActivityList } from "@/components/activity-list";
 import { loadLookups } from "@/components/lookups";
 import { toTaskItems } from "@/components/task-items";
 import { TaskRow } from "@/components/task-row";
-import { Avatar, EmptyState, Panel, PhaseHint, Progress } from "@/components/ui/page";
+import { Avatar, EmptyState, PageHeader, Panel, PhaseHint, Progress } from "@/components/ui/page";
 import { MobileMore } from "@/components/ui/mobile-more";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -60,6 +60,7 @@ export default async function Dashboard() {
 
   return (
     <>
+      <PageHeader title={t("nav.dashboard")} />
       <header className="hero">
         <div className="t-label">{longDate(today.today, locale)}</div>
         <h1 className="t-title hero-title">{t(greeting(hourIn(tz)))}, {scope.ctx.displayName}</h1>

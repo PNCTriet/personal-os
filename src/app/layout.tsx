@@ -9,7 +9,6 @@ import { loadShellData } from "@/components/shell/shell-data";
 import { getI18n } from "@/lib/i18n/server";
 import { I18nProvider } from "@/lib/i18n/client";
 
-// Fallback for non-Apple platforms (DESIGN.md: SF Pro → system-ui → Inter).
 const inter = Inter({ subsets: ["latin", "vietnamese"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
@@ -22,7 +21,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [{ media: "(prefers-color-scheme: light)", color: "#f5f5f7" }, { media: "(prefers-color-scheme: dark)", color: "#000000" }],
+  themeColor: [{ media: "(prefers-color-scheme: light)", color: "#f6f5f4" }, { media: "(prefers-color-scheme: dark)", color: "#191919" }],
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -35,11 +34,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body>
+      <body className={inter.className}>
         <I18nProvider locale={locale}>
         <a href="#main" className="sr-only focus:not-sr-only">{t("shell.skip")}</a>
         {shell ? (
-          <AppShell demo={demo} signedIn={!!scope} counts={shell.counts} index={shell.index} pickers={shell.pickers}>{children}</AppShell>
+          <AppShell demo={demo} signedIn={!!scope} displayName={scope?.ctx.displayName ?? "Personal OS"} counts={shell.counts} index={shell.index} pickers={shell.pickers}>{children}</AppShell>
         ) : (
           <main id="main">{children}</main>
         )}

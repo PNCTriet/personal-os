@@ -1,21 +1,47 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Sparkles, type LucideIcon } from "lucide-react";
 import { initials } from "@/lib/format";
 
 export type Tone = "green" | "orange" | "red" | "blue" | "gray" | "none";
+export type Crumb = { label: string; href?: string };
 
-export function PageHeader({ title, subtitle, actions, phase }: { title: string; subtitle?: ReactNode; actions?: ReactNode; phase?: string | null }) {
+export function PageHeader({ title, subtitle, actions, phase, crumbs }: {
+  title: string; subtitle?: ReactNode; actions?: ReactNode; phase?: string | null; crumbs?: Crumb[];
+}) {
+  const items: Crumb[] = crumbs ?? [{ label: title }];
+  const isDetail = Boolean(crumbs?.length);
+  const showToolbar = Boolean(actions || (!isDetail && (phase || subtitle)));
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <h1 className="t-title">{title}</h1>
-          {phase && <PhaseHint text={phase} />}
+    <>
+      <header className="page-header">
+        <nav className="breadcrumb" aria-label="Breadcrumb">
+          {items.map((c, i) => (
+            <span key={`${c.label}-${i}`}>
+              {i > 0 && <span className="breadcrumb-sep" aria-hidden="true">/</span>}
+              {c.href ? <Link href={c.href} className="breadcrumb-link">{c.label}</Link> : <span className="breadcrumb-current">{c.label}</span>}
+            </span>
+          ))}
+        </nav>
+        {showToolbar && (
+          <div className="page-toolbar">
+            {!isDetail && subtitle && <span className="page-header-sub muted">{subtitle}</span>}
+            {!isDetail && phase && <PhaseHint text={phase} />}
+            <span className="page-toolbar-spacer" />
+            {actions}
+          </div>
+        )}
+      </header>
+      {isDetail && (
+        <div className="page-detail">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <h1 className="t-title">{title}</h1>
+            {phase && <PhaseHint text={phase} />}
+          </div>
+          {subtitle && <div className="muted" style={{ marginTop: 6 }}>{subtitle}</div>}
         </div>
-        {subtitle && <p className="muted" style={{ margin: "3px 0 0" }}>{subtitle}</p>}
-      </div>
-      {actions && <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{actions}</div>}
-    </div>
+      )}
+    </>
   );
 }
 

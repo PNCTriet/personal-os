@@ -45,7 +45,7 @@ export default async function ProjectsPage() {
           empty={<EmptyState icon={FolderKanban} title={t("proj.none")} body={t("proj.noneBody")} />}
         />
       </div>
-      <Panel title={t("proj.new")} style={{ maxWidth: 760 }}>
+      <Panel title={t("proj.new")} style={{ maxWidth: 640 }}>
         <div id="new" style={{ scrollMarginTop: 64 }}><NewProject /></div>
       </Panel>
     </>

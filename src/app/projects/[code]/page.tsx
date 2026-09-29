@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 import { requireScope } from "@/lib/session";
 import { getI18n } from "@/lib/i18n/server";
 import { term } from "@/lib/i18n";
@@ -40,8 +38,8 @@ export default async function ProjectPage({ params, searchParams }: Props) {
 
   return (
     <>
-      <Link href="/projects" className="t-small muted" style={{ display: "inline-flex", alignItems: "center", gap: 2, marginBottom: 6 }}><ChevronLeft size={14} />{tr("nav.projects")}</Link>
       <PageHeader
+        crumbs={[{ label: tr("nav.projects"), href: "/projects" }, { label: project.name }]}
         title={project.name}
         subtitle={<span style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><span className="tabular">{project.code}</span><Pill tone={TONE[project.status]}>{term(locale, PROJECT_STATUS_LABEL[project.status])}</Pill>{company && <span>{company.name}</span>}</span>}
       />

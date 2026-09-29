@@ -15,6 +15,11 @@ export const vi: Record<MessageKey, string> = {
   "shell.signOut": "Đăng xuất", "shell.demo": "Demo", "shell.demoHint": "Chế độ demo: dữ liệu mẫu trong bộ nhớ máy chủ, không cần đăng nhập. Tự đặt lại khi khởi động lại.",
   "shell.openNav": "Mở menu", "shell.closeNav": "Đóng menu", "shell.toggleSidebar": "Ẩn/hiện thanh bên", "shell.toggleTheme": "Bật/tắt chế độ tối",
   "shell.language": "Ngôn ngữ", "shell.switchTo": "English", "shell.skip": "Chuyển đến nội dung", "shell.close": "Đóng",
+  "shell.refresh": "Tải lại", "shell.profile": "Hồ sơ",
+  "login.title": "Personal OS", "login.subtitle": "Hệ thống quản lý công việc, thời gian và tiền bạc",
+  "login.email": "Email", "login.submit": "Đăng nhập", "login.sending": "Đang gửi…",
+  "login.expired": "Liên kết đã hết hạn hoặc đã được dùng. Hãy yêu cầu liên kết mới.",
+  "login.emailHint": "Chúng tôi sẽ gửi liên kết đăng nhập qua email.",
   "cmd.placeholder": "Tìm hoặc chuyển đến…", "cmd.empty": "Không có kết quả.", "cmd.actions": "Thao tác", "cmd.goto": "Đi đến",
   "cmd.newProject": "Dự án mới", "cmd.switchLang": "Chuyển sang tiếng Anh",
 
